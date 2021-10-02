@@ -1,0 +1,15 @@
+## Interface: 90100
+## Title: PetCompare
+## Author: Van
+## Version: 1.1
+
+libs\LibStub\LibStub.lua
+libs\LibSerialize\lib.xml
+libs\LibDeflate\lib.xml
+libs\AceComm-3.0\AceComm-3.0.xml
+libs\AceGUI-3.0\AceGUI-3.0.xml
+libs\CallbackHandler-1.0\CallbackHandler-1.0.xml
+
+PetCompare.lua
+
+# /run print((select(4, GetBuildInfo())));
