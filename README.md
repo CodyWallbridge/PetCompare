@@ -5,4 +5,4 @@ If you're wondering what battle pets you and another player have in common, simp
 
 Become a community member and help contribute!
 
-https://discord.gg/HRwEMnX4Yv
+https://discord.gg/Qgkpm8CEuZ
