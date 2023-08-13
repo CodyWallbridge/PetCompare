@@ -1,11 +1,11 @@
 EventFrame = CreateFrame("frame", "PetCompare Frame");
 myPrefix = "PetComparison121";
 MyAddOn_Comms = {};
+petCompareAnswered = false; petCompareScore = 0; myDuplicates = {};
 firstPartyShared = nil; firstPartyMyOffers = nil; firstPartyTheirOffers = nil;
 secondPartyShared = nil; secondPartyMyOffers = nil; secondPartyTheirOffers = nil;
 thirdPartyShared = nil; thirdPartyMyOffers = nil; thirdPartyTheirOffers = nil;
 fourthPartyShared = nil; fourthPartyMyOffers = nil; fourthPartyTheirOffers = nil;
-petCompareAnswered = false; petCompareScore = 0; myDuplicates = {};
 
 
 function EventFrame:OnEvent(event, text, ... )
@@ -13,7 +13,7 @@ function EventFrame:OnEvent(event, text, ... )
 		startedPlayerName = ...;
 		text = string.lower(text);
 		totalMembers = GetNumGroupMembers();
-		if(totalMembers == 1) then
+		if(totalMembers == 1) then --this needs to be moved within text check. could fuck with other addons
 			return;
 		end
 		if(text == "!compare") then
@@ -434,9 +434,9 @@ function EventFrame:CreateWindow()
 						
 						icon:SetCallback("OnClick",function()
 							SetCollectionsJournalShown(true, 2);
-							C_PetJournal.SetSearchFilter(icon.speciesName);
-							PetJournalListScrollFrameButton1:Click("LeftButton", true);
-							C_PetJournal.ClearSearchFilter();
+							C_Timer.After(0.1, function()
+								C_PetJournal.SetSearchFilter(icon.speciesName);
+							end)
 						end)
 						sharedScroll:AddChild(icon);
 					end	
@@ -490,11 +490,11 @@ function EventFrame:CreateWindow()
 						
 						icon:SetCallback("OnClick",function()
 							SetCollectionsJournalShown(true, 2);
-							C_PetJournal.SetSearchFilter(icon.speciesName);
-							PetJournalListScrollFrameButton1:Click("LeftButton", true);
-							C_PetJournal.ClearSearchFilter();
+							C_Timer.After(0.1, function()
+								C_PetJournal.SetSearchFilter(icon.speciesName);
+							end)
 						end)
-						myOffersScroll:AddChild(icon);
+						sharedScroll:AddChild(icon);
 					end	
 				end
 
@@ -546,11 +546,11 @@ function EventFrame:CreateWindow()
 						
 						icon:SetCallback("OnClick",function()
 							SetCollectionsJournalShown(true, 2);
-							C_PetJournal.SetSearchFilter(icon.speciesName);
-							PetJournalListScrollFrameButton1:Click("LeftButton", true);
-							C_PetJournal.ClearSearchFilter();
+							C_Timer.After(0.1, function()
+								C_PetJournal.SetSearchFilter(icon.speciesName);
+							end)
 						end)
-						theirOffersScroll:AddChild(icon);
+						sharedScroll:AddChild(icon);
 					end	
 				end
 
@@ -675,9 +675,9 @@ function EventFrame:CreateWindow()
 						
 						icon:SetCallback("OnClick",function()
 							SetCollectionsJournalShown(true, 2);
-							C_PetJournal.SetSearchFilter(icon.speciesName);
-							PetJournalListScrollFrameButton1:Click("LeftButton", true);
-							C_PetJournal.ClearSearchFilter();
+							C_Timer.After(0.1, function()
+								C_PetJournal.SetSearchFilter(icon.speciesName);
+							end)
 						end)
 						sharedScroll:AddChild(icon);
 					end	
@@ -731,9 +731,9 @@ function EventFrame:CreateWindow()
 						
 						icon:SetCallback("OnClick",function()
 							SetCollectionsJournalShown(true, 2);
-							C_PetJournal.SetSearchFilter(icon.speciesName);
-							PetJournalListScrollFrameButton1:Click("LeftButton", true);
-							C_PetJournal.ClearSearchFilter();
+							C_Timer.After(0.1, function()
+								C_PetJournal.SetSearchFilter(icon.speciesName);
+							end)
 						end)
 						myOffersScroll:AddChild(icon);
 					end	
@@ -787,11 +787,11 @@ function EventFrame:CreateWindow()
 						
 						icon:SetCallback("OnClick",function()
 							SetCollectionsJournalShown(true, 2);
-							C_PetJournal.SetSearchFilter(icon.speciesName);
-							PetJournalListScrollFrameButton1:Click("LeftButton", true);
-							C_PetJournal.ClearSearchFilter();
+							C_Timer.After(0.1, function()
+								C_PetJournal.SetSearchFilter(icon.speciesName);
+							end)
 						end)
-						theirOffersScroll:AddChild(icon);
+						sharedScroll:AddChild(icon);
 					end	
 				end
 
@@ -917,9 +917,9 @@ function EventFrame:CreateWindow()
 						
 						icon:SetCallback("OnClick",function()
 							SetCollectionsJournalShown(true, 2);
-							C_PetJournal.SetSearchFilter(icon.speciesName);
-							PetJournalListScrollFrameButton1:Click("LeftButton", true);
-							C_PetJournal.ClearSearchFilter();
+							C_Timer.After(0.1, function()
+								C_PetJournal.SetSearchFilter(icon.speciesName);
+							end)
 						end)
 						sharedScroll:AddChild(icon);
 					end	
@@ -973,11 +973,11 @@ function EventFrame:CreateWindow()
 						
 						icon:SetCallback("OnClick",function()
 							SetCollectionsJournalShown(true, 2);
-							C_PetJournal.SetSearchFilter(icon.speciesName);
-							PetJournalListScrollFrameButton1:Click("LeftButton", true);
-							C_PetJournal.ClearSearchFilter();
+							C_Timer.After(0.1, function()
+								C_PetJournal.SetSearchFilter(icon.speciesName);
+							end)
 						end)
-						myOffersScroll:AddChild(icon);
+						sharedScroll:AddChild(icon);
 					end	
 				end
 
@@ -1029,11 +1029,11 @@ function EventFrame:CreateWindow()
 						
 						icon:SetCallback("OnClick",function()
 							SetCollectionsJournalShown(true, 2);
-							C_PetJournal.SetSearchFilter(icon.speciesName);
-							PetJournalListScrollFrameButton1:Click("LeftButton", true);
-							C_PetJournal.ClearSearchFilter();
+							C_Timer.After(0.1, function()
+								C_PetJournal.SetSearchFilter(icon.speciesName);
+							end)
 						end)
-						theirOffersScroll:AddChild(icon);
+						sharedScroll:AddChild(icon);
 					end	
 				end
 
@@ -1158,9 +1158,9 @@ function EventFrame:CreateWindow()
 						
 						icon:SetCallback("OnClick",function()
 							SetCollectionsJournalShown(true, 2);
-							C_PetJournal.SetSearchFilter(icon.speciesName);
-							PetJournalListScrollFrameButton1:Click("LeftButton", true);
-							C_PetJournal.ClearSearchFilter();
+							C_Timer.After(0.1, function()
+								C_PetJournal.SetSearchFilter(icon.speciesName);
+							end)
 						end)
 						sharedScroll:AddChild(icon);
 					end	
@@ -1214,11 +1214,11 @@ function EventFrame:CreateWindow()
 						
 						icon:SetCallback("OnClick",function()
 							SetCollectionsJournalShown(true, 2);
-							C_PetJournal.SetSearchFilter(icon.speciesName);
-							PetJournalListScrollFrameButton1:Click("LeftButton", true);
-							C_PetJournal.ClearSearchFilter();
+							C_Timer.After(0.1, function()
+								C_PetJournal.SetSearchFilter(icon.speciesName);
+							end)
 						end)
-						myOffersScroll:AddChild(icon);
+						sharedScroll:AddChild(icon);
 					end	
 				end
 
@@ -1270,11 +1270,11 @@ function EventFrame:CreateWindow()
 						
 						icon:SetCallback("OnClick",function()
 							SetCollectionsJournalShown(true, 2);
-							C_PetJournal.SetSearchFilter(icon.speciesName);
-							PetJournalListScrollFrameButton1:Click("LeftButton", true);
-							C_PetJournal.ClearSearchFilter();
+							C_Timer.After(0.1, function()
+								C_PetJournal.SetSearchFilter(icon.speciesName);
+							end)
 						end)
-						theirOffersScroll:AddChild(icon);
+						sharedScroll:AddChild(icon);
 					end	
 				end
 
