@@ -1,7 +1,7 @@
 ## Interface: 90100
 ## Title: PetCompare
 ## Author: Van
-## Version: 1.1
+## Version: 3.0
 
 libs\LibStub\LibStub.lua
 libs\LibSerialize\lib.xml
