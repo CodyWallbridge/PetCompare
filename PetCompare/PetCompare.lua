@@ -1,4 +1,4 @@
-EventFrame = CreateFrame("frame", "PetCompare Frame");
+PetCompareEventFrame = CreateFrame("frame", "PetCompare Frame");
 myPrefix = "PetComparison121";
 MyAddOn_Comms = {};
 petCompareAnswered = false; petCompareScore = 0; myDuplicates = {};
@@ -7,16 +7,15 @@ secondPartyShared = nil; secondPartyMyOffers = nil; secondPartyTheirOffers = nil
 thirdPartyShared = nil; thirdPartyMyOffers = nil; thirdPartyTheirOffers = nil;
 fourthPartyShared = nil; fourthPartyMyOffers = nil; fourthPartyTheirOffers = nil;
 
-
-function EventFrame:OnEvent(event, text, ... )
+function PetCompareEventFrame:OnEvent(event, text, ... )
 	if(event == "CHAT_MSG_PARTY" or event == "CHAT_MSG_PARTY_LEADER") then
 		startedPlayerName = ...;
 		text = string.lower(text);
 		totalMembers = GetNumGroupMembers();
-		if(totalMembers == 1) then --this needs to be moved within text check. could fuck with other addons
-			return;
-		end
 		if(text == "!compare") then
+			if(totalMembers == 1) then --this needs to be moved within text check. could fuck with other addons
+				return;
+			end
 			petCompareScore = 0;
 			local myName = UnitName("player") .. "-"..GetNormalizedRealmName();
 			print("Starting Pet Comparison Check...");
@@ -130,7 +129,7 @@ function EventFrame:OnEvent(event, text, ... )
 				end)
 
 				C_Timer.After(1, function() 
-					EventFrame:CreateWindow();
+					PetCompareEventFrame:CreatePetCompareWindow();
 					numSources = C_PetJournal.GetNumPetSources();
 					for sourceCounter = 1, numSources, 1 do
 						C_PetJournal.SetPetSourceChecked(sourceCounter, sourcesPreviousValue[sourceCounter])
@@ -144,15 +143,15 @@ function EventFrame:OnEvent(event, text, ... )
 		end
 
 	elseif(event == "PLAYER_ENTERING_WORLD") then
-		EventFrame:onLoad();
+		PetCompareEventFrame:onLoad();
 	end
 end--function
 
-EventFrame:RegisterEvent("PLAYER_ENTERING_WORLD");
-EventFrame:SetScript("OnEvent", EventFrame.OnEvent);
+PetCompareEventFrame:RegisterEvent("PLAYER_ENTERING_WORLD");
+PetCompareEventFrame:SetScript("OnEvent", PetCompareEventFrame.OnEvent);
 
 
-function EventFrame:onLoad()
+function PetCompareEventFrame:onLoad()
 	firstMatch = true;
 	hadAMatch = false;
 	initialized = false;
@@ -162,12 +161,12 @@ function EventFrame:onLoad()
 	AceComm = LibStub:GetLibrary("AceComm-3.0");
 	MyAddOn_Comms.Prefix = myPrefix;
 	MyAddOn_Comms:Init();
-	EventFrame:RegisterEvent("CHAT_MSG_PARTY")
-	EventFrame:SetScript("OnEvent", EventFrame.OnEvent);
-	EventFrame:RegisterEvent("CHAT_MSG_PARTY_LEADER")
-	EventFrame:SetScript("OnEvent", EventFrame.OnEvent);
-	EventFrame:RegisterEvent("CHAT_MSG_ADDON"); -- erase?
-	EventFrame:SetScript("OnEvent", EventFrame.OnEvent);
+	PetCompareEventFrame:RegisterEvent("CHAT_MSG_PARTY")
+	PetCompareEventFrame:SetScript("OnEvent", PetCompareEventFrame.OnEvent);
+	PetCompareEventFrame:RegisterEvent("CHAT_MSG_PARTY_LEADER")
+	PetCompareEventFrame:SetScript("OnEvent", PetCompareEventFrame.OnEvent);
+	PetCompareEventFrame:RegisterEvent("CHAT_MSG_ADDON"); -- erase?
+	PetCompareEventFrame:SetScript("OnEvent", PetCompareEventFrame.OnEvent);
 end
 
 function MyAddOn_Comms:Init()
@@ -393,7 +392,7 @@ function MyAddOn_Comms:SendAMessage(myPets)
 	self:SendCommMessage(myPrefix, encoded, "PARTY");
 end
 
-function EventFrame:CreateWindow()
+function PetCompareEventFrame:CreatePetCompareWindow()
 	local function DrawGroup1(container)
 		local function DrawSharedTab(container)
 			local name = UnitName("party1");
@@ -494,7 +493,7 @@ function EventFrame:CreateWindow()
 								C_PetJournal.SetSearchFilter(icon.speciesName);
 							end)
 						end)
-						sharedScroll:AddChild(icon);
+						myOffersScroll:AddChild(icon);
 					end	
 				end
 
@@ -550,7 +549,7 @@ function EventFrame:CreateWindow()
 								C_PetJournal.SetSearchFilter(icon.speciesName);
 							end)
 						end)
-						sharedScroll:AddChild(icon);
+						theirOffersScroll:AddChild(icon);
 					end	
 				end
 
@@ -791,7 +790,7 @@ function EventFrame:CreateWindow()
 								C_PetJournal.SetSearchFilter(icon.speciesName);
 							end)
 						end)
-						sharedScroll:AddChild(icon);
+						theirOffersScroll:AddChild(icon);
 					end	
 				end
 
@@ -977,7 +976,7 @@ function EventFrame:CreateWindow()
 								C_PetJournal.SetSearchFilter(icon.speciesName);
 							end)
 						end)
-						sharedScroll:AddChild(icon);
+						myOffersScroll:AddChild(icon);
 					end	
 				end
 
@@ -1033,7 +1032,7 @@ function EventFrame:CreateWindow()
 								C_PetJournal.SetSearchFilter(icon.speciesName);
 							end)
 						end)
-						sharedScroll:AddChild(icon);
+						theirOffersScroll:AddChild(icon);
 					end	
 				end
 
@@ -1218,7 +1217,7 @@ function EventFrame:CreateWindow()
 								C_PetJournal.SetSearchFilter(icon.speciesName);
 							end)
 						end)
-						sharedScroll:AddChild(icon);
+						myOffersScroll:AddChild(icon);
 					end	
 				end
 
@@ -1274,7 +1273,7 @@ function EventFrame:CreateWindow()
 								C_PetJournal.SetSearchFilter(icon.speciesName);
 							end)
 						end)
-						sharedScroll:AddChild(icon);
+						theirOffersScroll:AddChild(icon);
 					end	
 				end
 
@@ -1426,4 +1425,4 @@ function EventFrame:CreateWindow()
 
 	-- add to the frame container
 	frame:AddChild(tab)
-end--CreateWindow
+end--CreatePetCompareWindow
