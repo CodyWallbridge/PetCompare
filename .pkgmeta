@@ -1,1 +1,3 @@
 package-as: PetCompare
+move-folders:
+  PetCompare/PetCompare: PetCompare
