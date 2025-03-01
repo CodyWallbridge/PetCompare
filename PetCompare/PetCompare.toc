@@ -1,16 +1,19 @@
-## Interface: 100206
+## Interface: 110100
 ## Title: PetCompare
 ## Author: Van
-## Version: 4.6.1
+## Version: 4.7
 ## IconTexture: Interface\AddOns\PetCompare\Media\Icons\petCompareicon.jpeg
 
 libs\LibStub\LibStub.lua
+libs\CallbackHandler-1.0\CallbackHandler-1.0.xml
 libs\LibSerialize\lib.xml
 libs\LibDeflate\lib.xml
 libs\AceComm-3.0\AceComm-3.0.xml
 libs\AceGUI-3.0\AceGUI-3.0.xml
-libs\CallbackHandler-1.0\CallbackHandler-1.0.xml
 
 PetCompare.lua
 
 # /run print((select(4, GetBuildInfo())));
+# when updating, download newest versions from https://www.wowace.com/projects/ace3/pages/api/ace-comm-3-0
+# when updating, download newest versions from https://www.curseforge.com/wow/addons/libdeflate/download/2564445
+# when updating, download newest versions from https://www.wowace.com/projects/libserialize

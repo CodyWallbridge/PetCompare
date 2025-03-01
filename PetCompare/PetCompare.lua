@@ -7,13 +7,21 @@ secondPartyShared = nil; secondPartyMyOffers = nil; secondPartyTheirOffers = nil
 thirdPartyShared = nil; thirdPartyMyOffers = nil; thirdPartyTheirOffers = nil;
 fourthPartyShared = nil; fourthPartyMyOffers = nil; fourthPartyTheirOffers = nil;
 
+DEBUG_MODE = true;
+
+local function debugPrint(msg)
+    if DEBUG_MODE then
+        print(msg)
+    end
+end
+
 function PetCompareEventFrame:OnEvent(event, text, ... )
 	if(event == "CHAT_MSG_PARTY" or event == "CHAT_MSG_PARTY_LEADER") then
 		startedPlayerName = ...;
 		text = string.lower(text);
 		totalMembers = GetNumGroupMembers();
 		if(text == "!compare") then
-			if(totalMembers == 1) then --this needs to be moved within text check. could fuck with other addons
+			if(totalMembers == 1) then
 				return;
 			end
 			petCompareScore = 0;
@@ -39,7 +47,7 @@ function PetCompareEventFrame:OnEvent(event, text, ... )
 			end
 			C_PetJournal.SetAllPetTypesChecked(true);
 
-
+			-- only the starting player should be sending the first message
 			if(startedPlayerName == myName) then
 				initialized = true;
 				myPets = {};
@@ -178,6 +186,7 @@ function MyAddOn_Comms:OnCommReceived(passedPrefix, msg, distribution, sender)
 	if (passedPrefix == myPrefix) then
 		local myName = UnitName("player");
 		if(sender ~= myName) then
+
 			if(initialized == true) then --if im the person who started the comparison
 				local decoded = Deflater:DecodeForWoWAddonChannel(msg)
 				if not decoded then return end
