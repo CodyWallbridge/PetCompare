@@ -3,6 +3,9 @@
 ## Author: Van
 ## Version: 4.7
 ## IconTexture: Interface\AddOns\PetCompare\Media\Icons\petCompareicon.jpeg
+## X-Curse-Project-ID: 479539
+## X-WoWI-ID: 26308
+## X-Wago-ID: RNL94D6o
 
 libs\LibStub\LibStub.lua
 libs\CallbackHandler-1.0\CallbackHandler-1.0.xml
