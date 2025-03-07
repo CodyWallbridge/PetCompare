@@ -1,18 +1,3 @@
---[[
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Lesser General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU Lesser General Public License for more details.
-
-You should have received a copy of the GNU Lesser General Public License
-along with this program.  If not, see https://www.gnu.org/licenses/.
---]]
-
 --- LibDeflate usage example
 -- @author Haoqian He
 -- @file example.lua
@@ -22,49 +7,39 @@ local LibDeflate
 if LibStub then -- You are using LibDeflate as WoW addon
 	LibDeflate = LibStub:GetLibrary("LibDeflate")
 else
-	-- You are using LibDeflate as Lua library.
-	-- Setup the path to locate LibDeflate.lua,
-	-- if 'require("LibDeflate")' fails, for example:
-	-- package.path = ("?.lua;../?.lua;")..(package.path or "")
+	package.path = package.path..";../LibDeflate.lua;LibDeflate.lua;"
 	LibDeflate = require("LibDeflate")
 end
 
+
 local example_input = "12123123412345123456123456712345678123456789"
 
--- Compress using raw deflate format
+--- Compress and decompress using raw deflate format
 local compress_deflate = LibDeflate:CompressDeflate(example_input)
 
--- decompress
-local decompress_deflate = LibDeflate:DecompressDeflate(compress_deflate)
--- Check if the first return value of DecompressXXXX is non-nil to know if the
--- decompression succeeds.
-if decompress_deflate == nil then
-	error("Decompression fails.")
-else
-	-- Decompression succeeds.
-	assert(example_input == decompress_deflate)
-end
 
-
--- If it is to transmit through WoW addon channel,
--- compressed data must be encoded so NULL ("\000") is not transmitted.
+-- To transmit through WoW addon channel, data must be encoded so NULL ("\000")
+-- is not in the data.
 local data_to_trasmit_WoW_addon = LibDeflate:EncodeForWoWAddonChannel(
 	compress_deflate)
 -- When the receiver gets the data, decoded it first.
 local data_decoded_WoW_addon = LibDeflate:DecodeForWoWAddonChannel(
 	data_to_trasmit_WoW_addon)
 -- Then decomrpess it
-assert(LibDeflate:DecompressDeflate(data_decoded_WoW_addon) == example_input)
+local decompress_deflate = LibDeflate:DecompressDeflate(data_decoded_WoW_addon)
+
+-- All assertions in this example are just a test for this example. You dont
+-- need to write this assertion in your code, unless you want to test if
+-- LibDeflate has any bug.
+assert(decompress_deflate == example_input)
 
 -- The compressed output is not printable. EncodeForPrint will convert to
--- a printable format, in case you want to export to the user to
--- copy and paste. This encoding will make the data 25% bigger.
+-- a printable format. This encoding will make the output 25% bigger.
 local printable_compressed = LibDeflate:EncodeForPrint(compress_deflate)
 
 -- DecodeForPrint to convert back.
--- DecodeForPrint will remove prefixed and trailing control or space characters
--- in the string before decode it.
 assert(LibDeflate:DecodeForPrint(printable_compressed) == compress_deflate)
+
 
 
 -------------------------------------------------------------------------------

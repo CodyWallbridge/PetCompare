@@ -1,11 +1,12 @@
-## Interface: 80300
+## Interface: 80000
 ## Title: Lib: LibDeflate
 ## Notes: Compressor and decompressor with high compression ratio using DEFLATE/zlib format.
 ## Author: Haoqian He (WoW: Safetyy at Illidan-US (Horde))
-## Version: 1.0.2-release
+## Version: 0.9.0-beta2
 ## X-Website: https://wow.curseforge.com/projects/libdeflate
 ## X-Category: Library
-## X-License: zlib
+## X-License: GPLv3
+## LoadOnDemand: 1
 
 LibStub\LibStub.lua
 lib.xml
