@@ -1,13 +1,24 @@
-PetCompareEventFrame = CreateFrame("frame", "PetCompare Frame");
-myPrefix = "PetComparison121";
-MyAddOn_Comms = {};
-petCompareAnswered = false; petCompareScore = 0; myDuplicates = {};
-firstPartyShared = nil; firstPartyMyOffers = nil; firstPartyTheirOffers = nil;
-secondPartyShared = nil; secondPartyMyOffers = nil; secondPartyTheirOffers = nil;
-thirdPartyShared = nil; thirdPartyMyOffers = nil; thirdPartyTheirOffers = nil;
-fourthPartyShared = nil; fourthPartyMyOffers = nil; fourthPartyTheirOffers = nil;
+local PetCompareEventFrame = CreateFrame("frame", "PetCompare Frame");
+local myPrefix = "PetComparison121";
+local MyAddOn_Comms = {};
+local petCompareAnswered = false; local petCompareScore = 0; local myDuplicates = {};
+local firstPartyShared = nil; local firstPartyMyOffers = nil; local firstPartyTheirOffers = nil;
+local secondPartyShared = nil; local secondPartyMyOffers = nil; local secondPartyTheirOffers = nil;
+local thirdPartyShared = nil; local thirdPartyMyOffers = nil; local thirdPartyTheirOffers = nil;
+local fourthPartyShared = nil; local fourthPartyMyOffers = nil; local fourthPartyTheirOffers = nil;
+local sourcesPreviousValue = {};
+local typesPreviousValue = {};
 
-DEBUG_MODE = true;
+-- load variables
+local firstMatch = true;
+local hadAMatch = false;
+local initialized = false;
+local Serializer= LibStub("LibSerialize");
+local Deflater = LibStub("LibDeflate");
+local AceGUI = LibStub("AceGUI-3.0");
+local AceComm = LibStub:GetLibrary("AceComm-3.0");
+
+local DEBUG_MODE = true;
 
 local function debugPrint(msg)
     if DEBUG_MODE then
@@ -15,24 +26,45 @@ local function debugPrint(msg)
     end
 end
 
+function PetCompareEventFrame:onLoad()
+	firstMatch = true;
+	hadAMatch = false;
+	initialized = false;
+	Serializer=LibStub("LibSerialize");
+	Deflater = LibStub("LibDeflate");
+	AceGUI = LibStub("AceGUI-3.0");
+	AceComm = LibStub:GetLibrary("AceComm-3.0");
+	MyAddOn_Comms.Prefix = myPrefix;
+	MyAddOn_Comms:Init();
+	PetCompareEventFrame:RegisterEvent("CHAT_MSG_PARTY")
+	PetCompareEventFrame:SetScript("OnEvent", PetCompareEventFrame.OnEvent);
+	PetCompareEventFrame:RegisterEvent("CHAT_MSG_PARTY_LEADER")
+	PetCompareEventFrame:SetScript("OnEvent", PetCompareEventFrame.OnEvent);
+	PetCompareEventFrame:RegisterEvent("CHAT_MSG_ADDON"); -- erase?
+	PetCompareEventFrame:SetScript("OnEvent", PetCompareEventFrame.OnEvent);
+	debugPrint("registered for messages")
+end
+
 function PetCompareEventFrame:OnEvent(event, text, ... )
 	if(event == "CHAT_MSG_PARTY" or event == "CHAT_MSG_PARTY_LEADER") then
-		startedPlayerName = ...;
 		text = string.lower(text);
-		totalMembers = GetNumGroupMembers();
 		if(text == "!compare") then
+			debugPrint("text was !compare")
+			local totalMembers = GetNumGroupMembers();
 			if(totalMembers == 1) then
 				return;
 			end
+			local startedPlayerName = ...;
 			petCompareScore = 0;
 			local myName = UnitName("player") .. "-"..GetNormalizedRealmName();
 			print("Starting Pet Comparison Check...");
+			debugPrint("debug mode is on")
 
 			--set search filters so addon doesnt break
 			C_PetJournal.SetFilterChecked(LE_PET_JOURNAL_FILTER_COLLECTED,true);
 			C_PetJournal.SetFilterChecked(LE_PET_JOURNAL_FILTER_NOT_COLLECTED,true);
-			--save and set sources
-			numSources = C_PetJournal.GetNumPetSources();
+			--save and set sources so they are the same when the user re-opens the journal
+			local numSources = C_PetJournal.GetNumPetSources();
 			sourcesPreviousValue = {};
 			for sourceCounter = 1, numSources, 1 do
 				sourcesPreviousValue[sourceCounter] = C_PetJournal.IsPetSourceChecked(sourceCounter);
@@ -40,7 +72,7 @@ function PetCompareEventFrame:OnEvent(event, text, ... )
 			C_PetJournal.SetAllPetSourcesChecked(true);
 
 			--save and set pet types
-			numTypes = C_PetJournal.GetNumPetTypes();
+			local numTypes = C_PetJournal.GetNumPetTypes();
 			typesPreviousValue = {};
 			for typesCounter = 1, numTypes, 1 do
 				typesPreviousValue[typesCounter] = C_PetJournal.IsPetTypeChecked(typesCounter);
@@ -49,15 +81,15 @@ function PetCompareEventFrame:OnEvent(event, text, ... )
 
 			-- only the starting player should be sending the first message
 			if(startedPlayerName == myName) then
+				debugPrint("I am sending the first message.")
 				initialized = true;
-				myPets = {};
-				myRarities = {};
-				myLevels = {};
-				pointsAddedForPet = {};
+				local myPets = {};
+				local myRarities = {};
+				local myLevels = {};
+				local pointsAddedForPet = {};
 				local  numPets, numOwned = C_PetJournal.GetNumPets();
 				for firstPlayerCounter = 1, numOwned, 1 do
-					petID = nil;
-					petID, speciesID, owned, customName, level, favorite, isRevoked, speciesName, icon, petType, companionID, tooltip, description, isWild, canBattle, isTradeable = C_PetJournal.GetPetInfoByIndex(firstPlayerCounter);
+					local petID, speciesID, owned, customName, level, favorite, isRevoked, speciesName, icon, petType, companionID, tooltip, description, isWild, canBattle, isTradeable = C_PetJournal.GetPetInfoByIndex(firstPlayerCounter);
 
 					if(petID) then
 						local health, maxHealth, power, speed, rarity = C_PetJournal.GetPetStats(petID);
@@ -132,11 +164,12 @@ function PetCompareEventFrame:OnEvent(event, text, ... )
 
 				MyAddOn_Comms:SendAMessage(myPets);
 
-				C_Timer.After(3, function() 
+				C_Timer.After(5, function()
+					SendChatMessage("setting initialized to false", "party");
 					initialized = false;
 				end)
 
-				C_Timer.After(1, function() 
+				C_Timer.After(1, function()
 					PetCompareEventFrame:CreatePetCompareWindow();
 					numSources = C_PetJournal.GetNumPetSources();
 					for sourceCounter = 1, numSources, 1 do
@@ -151,31 +184,14 @@ function PetCompareEventFrame:OnEvent(event, text, ... )
 		end
 
 	elseif(event == "PLAYER_ENTERING_WORLD") then
+		debugPrint("PEW event fired")
 		PetCompareEventFrame:onLoad();
 	end
 end--function
 
 PetCompareEventFrame:RegisterEvent("PLAYER_ENTERING_WORLD");
 PetCompareEventFrame:SetScript("OnEvent", PetCompareEventFrame.OnEvent);
-
-
-function PetCompareEventFrame:onLoad()
-	firstMatch = true;
-	hadAMatch = false;
-	initialized = false;
-	Serializer=LibStub("LibSerialize");
-	Deflater = LibStub("LibDeflate");
-	AceGUI = LibStub("AceGUI-3.0");
-	AceComm = LibStub:GetLibrary("AceComm-3.0");
-	MyAddOn_Comms.Prefix = myPrefix;
-	MyAddOn_Comms:Init();
-	PetCompareEventFrame:RegisterEvent("CHAT_MSG_PARTY")
-	PetCompareEventFrame:SetScript("OnEvent", PetCompareEventFrame.OnEvent);
-	PetCompareEventFrame:RegisterEvent("CHAT_MSG_PARTY_LEADER")
-	PetCompareEventFrame:SetScript("OnEvent", PetCompareEventFrame.OnEvent);
-	PetCompareEventFrame:RegisterEvent("CHAT_MSG_ADDON"); -- erase?
-	PetCompareEventFrame:SetScript("OnEvent", PetCompareEventFrame.OnEvent);
-end
+debugPrint("registered PEW")
 
 function MyAddOn_Comms:Init()
     AceComm:Embed(self);
@@ -186,8 +202,9 @@ function MyAddOn_Comms:OnCommReceived(passedPrefix, msg, distribution, sender)
 	if (passedPrefix == myPrefix) then
 		local myName = UnitName("player");
 		if(sender ~= myName) then
-
+			debugPrint("I am not the sender. They are: " .. sender .. " I am: " .. myName)
 			if(initialized == true) then --if im the person who started the comparison
+				debugPrint("I got a response to my comparison request")
 				local decoded = Deflater:DecodeForWoWAddonChannel(msg)
 				if not decoded then return end
 				local decompressed = Deflater:DecompressDeflate(decoded)
@@ -195,7 +212,7 @@ function MyAddOn_Comms:OnCommReceived(passedPrefix, msg, distribution, sender)
 				local success, responseTable = Serializer:Deserialize(decompressed)
 				if not success then return end
 
-				totalMembers = GetNumGroupMembers();
+				local totalMembers = GetNumGroupMembers();
 				for counter = 1, totalMembers-1, 1 do
 					local index = "party" .. counter;
 					local name, realm = UnitName(index);
@@ -264,7 +281,9 @@ function MyAddOn_Comms:OnCommReceived(passedPrefix, msg, distribution, sender)
 				end
 
 			else--if im the person who is answering the comparison
+				debugPrint("I am answering a comparison request")
 				if(petCompareAnswered == false) then --if i have not answered yet
+					debugPrint("I have not answered yet")
 					petCompareScore = 0;
 					local  numPets, numOwned = C_PetJournal.GetNumPets();
 					local decoded = Deflater:DecodeForWoWAddonChannel(msg)
@@ -273,21 +292,20 @@ function MyAddOn_Comms:OnCommReceived(passedPrefix, msg, distribution, sender)
 					if not decompressed then return end
 					local success, theirPets = Serializer:Deserialize(decompressed)
 					if not success then return end
-					commonPets = {};
+					local commonPets = {};
 					commonPets["type"] = "common";
-					myOffers = {}
+					local myOffers = {}
 					myOffers["type"] = "partyMembersOffers";
-					theirOffers = {};
+					local theirOffers = {};
 					theirOffers["type"] = "startersOffers";
-					myPets = {};
-					myPetOccurences = {};
-					myRarities = {};
-					myLevels = {};
-					pointsAddedForPet = {};
+					local myPets = {};
+					local myPetOccurences = {};
+					local myRarities = {};
+					local myLevels = {};
+					local pointsAddedForPet = {};
 
 					for secondPlayerCounter = 1, numOwned, 1 do  --go through all my pets
-						petID = nil;
-						petID, speciesID, owned, customName, level, favorite, isRevoked, speciesName, icon, petType, companionID, tooltip = C_PetJournal.GetPetInfoByIndex(secondPlayerCounter);
+						local petID, speciesID, owned, customName, level, favorite, isRevoked, speciesName, icon, petType, companionID, tooltip = C_PetJournal.GetPetInfoByIndex(secondPlayerCounter);
 						if(petID) then
 							if(myPets[speciesID] == true) then --if I already have come across this pet
 								myPetOccurences[speciesID] = myPetOccurences[speciesID] + 1;
@@ -375,7 +393,8 @@ function MyAddOn_Comms:OnCommReceived(passedPrefix, msg, distribution, sender)
 					MyAddOn_Comms:SendAMessage(commonPets);
 					MyAddOn_Comms:SendAMessage(myOffers);
 					MyAddOn_Comms:SendAMessage(theirOffers);
-					numSources = C_PetJournal.GetNumPetSources();
+					SendChatMessage(myName .. " is done answering a request", "party");
+					local numSources = C_PetJournal.GetNumPetSources();
 					for sourceCounter = 1, numSources, 1 do
 						C_PetJournal.SetPetSourceChecked(sourceCounter, sourcesPreviousValue[sourceCounter])
 					end
@@ -389,6 +408,8 @@ function MyAddOn_Comms:OnCommReceived(passedPrefix, msg, distribution, sender)
 					end)
 				end
 			end
+		else -- debug only
+			debugPrint("I am the sender. They are: " .. sender .. " I am: " .. myName)
 		end --if sender != target
 	end--if
 end
@@ -398,6 +419,7 @@ function MyAddOn_Comms:SendAMessage(myPets)
 	local compressed = Deflater:CompressDeflate(serialized);
 	local encoded = Deflater:EncodeForWoWAddonChannel(compressed)
 	--SendChatMessage("sending message","party");
+	debugPrint("sending a message")
 	self:SendCommMessage(myPrefix, encoded, "PARTY");
 end
 
@@ -405,14 +427,14 @@ function PetCompareEventFrame:CreatePetCompareWindow()
 	local function DrawGroup1(container)
 		local function DrawSharedTab(container)
 			local name = UnitName("party1");
-			sharedScrollcontainer = AceGUI:Create("SimpleGroup");
+			local sharedScrollcontainer = AceGUI:Create("SimpleGroup");
 			sharedScrollcontainer:SetFullWidth(true);
 			sharedScrollcontainer:SetFullHeight(true);
 			sharedScrollcontainer:SetLayout("Fill");
 
 			container:AddChild(sharedScrollcontainer);
 
-			sharedScroll = AceGUI:Create("ScrollFrame");
+			local sharedScroll = AceGUI:Create("ScrollFrame");
 			sharedScroll:SetLayout("Flow");
 			sharedScrollcontainer:AddChild(sharedScroll);
 
@@ -433,7 +455,7 @@ function PetCompareEventFrame:CreatePetCompareWindow()
 					elseif(k == "type") then
 						--do nothing
 					else
-						speciesName, speciesIcon = C_PetJournal.GetPetInfoBySpeciesID(k)
+						local speciesName, speciesIcon = C_PetJournal.GetPetInfoBySpeciesID(k)
 						local icon = AceGUI:Create("Icon");
 						icon:SetImage(speciesIcon);
 						icon:SetLabel(speciesName);
@@ -461,14 +483,14 @@ function PetCompareEventFrame:CreatePetCompareWindow()
 
 		local function DrawMyOffersTab(container)
 			local name = UnitName("party1");
-			myOffersScrollContainer = AceGUI:Create("SimpleGroup");
+			local myOffersScrollContainer = AceGUI:Create("SimpleGroup");
 			myOffersScrollContainer:SetFullWidth(true);
 			myOffersScrollContainer:SetFullHeight(true);
 			myOffersScrollContainer:SetLayout("Fill");
 
 			container:AddChild(myOffersScrollContainer);
 
-			myOffersScroll = AceGUI:Create("ScrollFrame");
+			local myOffersScroll = AceGUI:Create("ScrollFrame");
 			myOffersScroll:SetLayout("Flow");
 			myOffersScrollContainer:AddChild(myOffersScroll);
 
@@ -517,14 +539,14 @@ function PetCompareEventFrame:CreatePetCompareWindow()
 
 		local function DrawTheirOffersTab(container)
 			local name = UnitName("party1");
-			theirOffersScrollContainer = AceGUI:Create("SimpleGroup");
+			local theirOffersScrollContainer = AceGUI:Create("SimpleGroup");
 			theirOffersScrollContainer:SetFullWidth(true);
 			theirOffersScrollContainer:SetFullHeight(true);
 			theirOffersScrollContainer:SetLayout("Fill");
 
 			container:AddChild(theirOffersScrollContainer);
 
-			theirOffersScroll = AceGUI:Create("ScrollFrame");
+			local theirOffersScroll = AceGUI:Create("ScrollFrame");
 			theirOffersScroll:SetLayout("Flow");
 			theirOffersScrollContainer:AddChild(theirOffersScroll);
 
@@ -545,7 +567,7 @@ function PetCompareEventFrame:CreatePetCompareWindow()
 					elseif(k == "type") then
 						--do nothing
 					else
-						speciesName, speciesIcon = C_PetJournal.GetPetInfoBySpeciesID(k)
+						local speciesName, speciesIcon = C_PetJournal.GetPetInfoBySpeciesID(k)
 						local icon = AceGUI:Create("Icon");
 						icon:SetImage(speciesIcon);
 						icon:SetLabel(speciesName);
@@ -598,13 +620,13 @@ function PetCompareEventFrame:CreatePetCompareWindow()
 
 			local button = AceGUI:Create("Button");
 			button:SetText("Tell " .. name .. " that you compared pets");
-			button:SetCallback("OnClick", 
-			function() 
+			button:SetCallback("OnClick",
+			function()
 				SendChatMessage("Hey " .. name .. " I compared pets with you!", "party");
 			end)
 			button:SetWidth(325);
 
-			scoreAndButtonContainer = AceGUI:Create("SimpleGroup");
+			local scoreAndButtonContainer = AceGUI:Create("SimpleGroup");
 			scoreAndButtonContainer:SetLayout("Flow");
 			scoreAndButtonContainer:SetFullWidth(true);
 			scoreAndButtonContainer:AddChild(PetCompareScoreLabel);
@@ -633,8 +655,8 @@ function PetCompareEventFrame:CreatePetCompareWindow()
 
 			local button = AceGUI:Create("Button");
 			button:SetText("Tell " .. name .. " that you tried to compare pets");
-			button:SetCallback("OnClick", 
-			function() 
+			button:SetCallback("OnClick",
+			function()
 				SendChatMessage("Hey " .. name .. " I tried to compare pets with you!", "party");
 			end)
 			button:SetWidth(325);
@@ -646,14 +668,14 @@ function PetCompareEventFrame:CreatePetCompareWindow()
 	local function DrawGroup2(container)
 		local function DrawSharedTab(container)
 			local name = UnitName("party2");
-			sharedScrollcontainer = AceGUI:Create("SimpleGroup");
+			local sharedScrollcontainer = AceGUI:Create("SimpleGroup");
 			sharedScrollcontainer:SetFullWidth(true);
 			sharedScrollcontainer:SetFullHeight(true);
 			sharedScrollcontainer:SetLayout("Fill");
 
 			container:AddChild(sharedScrollcontainer);
 
-			sharedScroll = AceGUI:Create("ScrollFrame");
+			local sharedScroll = AceGUI:Create("ScrollFrame");
 			sharedScroll:SetLayout("Flow");
 			sharedScrollcontainer:AddChild(sharedScroll);
 
@@ -674,7 +696,7 @@ function PetCompareEventFrame:CreatePetCompareWindow()
 					elseif(k == "type") then
 						--do nothing
 					else
-						speciesName, speciesIcon = C_PetJournal.GetPetInfoBySpeciesID(k)
+						local speciesName, speciesIcon = C_PetJournal.GetPetInfoBySpeciesID(k)
 						local icon = AceGUI:Create("Icon");
 						icon:SetImage(speciesIcon);
 						icon:SetLabel(speciesName);
@@ -702,14 +724,14 @@ function PetCompareEventFrame:CreatePetCompareWindow()
 
 		local function DrawMyOffersTab(container)
 			local name = UnitName("party2");
-			myOffersScrollContainer = AceGUI:Create("SimpleGroup");
+			local myOffersScrollContainer = AceGUI:Create("SimpleGroup");
 			myOffersScrollContainer:SetFullWidth(true);
 			myOffersScrollContainer:SetFullHeight(true);
 			myOffersScrollContainer:SetLayout("Fill");
 
 			container:AddChild(myOffersScrollContainer);
 
-			myOffersScroll = AceGUI:Create("ScrollFrame");
+			local myOffersScroll = AceGUI:Create("ScrollFrame");
 			myOffersScroll:SetLayout("Flow");
 			myOffersScrollContainer:AddChild(myOffersScroll);
 
@@ -730,7 +752,7 @@ function PetCompareEventFrame:CreatePetCompareWindow()
 					elseif(k == "type") then
 						--do nothing
 					else
-						speciesName, speciesIcon = C_PetJournal.GetPetInfoBySpeciesID(k);
+						local speciesName, speciesIcon = C_PetJournal.GetPetInfoBySpeciesID(k);
 						local icon = AceGUI:Create("Icon");
 						icon:SetImage(speciesIcon);
 						icon:SetLabel(speciesName);
@@ -758,14 +780,14 @@ function PetCompareEventFrame:CreatePetCompareWindow()
 
 		local function DrawTheirOffersTab(container)
 			local name = UnitName("party2");
-			theirOffersScrollContainer = AceGUI:Create("SimpleGroup");
+			local theirOffersScrollContainer = AceGUI:Create("SimpleGroup");
 			theirOffersScrollContainer:SetFullWidth(true);
 			theirOffersScrollContainer:SetFullHeight(true);
 			theirOffersScrollContainer:SetLayout("Fill");
 
 			container:AddChild(theirOffersScrollContainer);
 
-			theirOffersScroll = AceGUI:Create("ScrollFrame");
+			local theirOffersScroll = AceGUI:Create("ScrollFrame");
 			theirOffersScroll:SetLayout("Flow");
 			theirOffersScrollContainer:AddChild(theirOffersScroll);
 
@@ -786,7 +808,7 @@ function PetCompareEventFrame:CreatePetCompareWindow()
 					elseif(k == "type") then
 						--do nothing
 					else
-						speciesName, speciesIcon = C_PetJournal.GetPetInfoBySpeciesID(k)
+						local speciesName, speciesIcon = C_PetJournal.GetPetInfoBySpeciesID(k)
 						local icon = AceGUI:Create("Icon");
 						icon:SetImage(speciesIcon);
 						icon:SetLabel(speciesName);
@@ -845,7 +867,7 @@ function PetCompareEventFrame:CreatePetCompareWindow()
 			end)
 			button:SetWidth(325);
 
-			scoreAndButtonContainer = AceGUI:Create("SimpleGroup");
+			local scoreAndButtonContainer = AceGUI:Create("SimpleGroup");
 			scoreAndButtonContainer:SetLayout("Flow");
 			scoreAndButtonContainer:SetFullWidth(true);
 			scoreAndButtonContainer:AddChild(PetCompareScoreLabel);
@@ -888,14 +910,14 @@ function PetCompareEventFrame:CreatePetCompareWindow()
 	local function DrawGroup3(container)
 		local function DrawSharedTab(container)
 			local name = UnitName("party2");
-			sharedScrollcontainer = AceGUI:Create("SimpleGroup");
+			local sharedScrollcontainer = AceGUI:Create("SimpleGroup");
 			sharedScrollcontainer:SetFullWidth(true);
 			sharedScrollcontainer:SetFullHeight(true);
 			sharedScrollcontainer:SetLayout("Fill");
 
 			container:AddChild(sharedScrollcontainer);
 
-			sharedScroll = AceGUI:Create("ScrollFrame");
+			local sharedScroll = AceGUI:Create("ScrollFrame");
 			sharedScroll:SetLayout("Flow");
 			sharedScrollcontainer:AddChild(sharedScroll);
 
@@ -916,7 +938,7 @@ function PetCompareEventFrame:CreatePetCompareWindow()
 					elseif(k == "type") then
 						--do nothing
 					else
-						speciesName, speciesIcon = C_PetJournal.GetPetInfoBySpeciesID(k)
+						local speciesName, speciesIcon = C_PetJournal.GetPetInfoBySpeciesID(k)
 						local icon = AceGUI:Create("Icon");
 						icon:SetImage(speciesIcon);
 						icon:SetLabel(speciesName);
@@ -944,14 +966,14 @@ function PetCompareEventFrame:CreatePetCompareWindow()
 
 		local function DrawMyOffersTab(container)
 			local name = UnitName("party3");
-			myOffersScrollContainer = AceGUI:Create("SimpleGroup");
+			local myOffersScrollContainer = AceGUI:Create("SimpleGroup");
 			myOffersScrollContainer:SetFullWidth(true);
 			myOffersScrollContainer:SetFullHeight(true);
 			myOffersScrollContainer:SetLayout("Fill");
 
 			container:AddChild(myOffersScrollContainer);
 
-			myOffersScroll = AceGUI:Create("ScrollFrame");
+			local myOffersScroll = AceGUI:Create("ScrollFrame");
 			myOffersScroll:SetLayout("Flow");
 			myOffersScrollContainer:AddChild(myOffersScroll);
 
@@ -972,7 +994,7 @@ function PetCompareEventFrame:CreatePetCompareWindow()
 					elseif(k == "type") then
 						--do nothing
 					else
-						speciesName, speciesIcon = C_PetJournal.GetPetInfoBySpeciesID(k);
+						local speciesName, speciesIcon = C_PetJournal.GetPetInfoBySpeciesID(k);
 						local icon = AceGUI:Create("Icon");
 						icon:SetImage(speciesIcon);
 						icon:SetLabel(speciesName);
@@ -1000,14 +1022,14 @@ function PetCompareEventFrame:CreatePetCompareWindow()
 
 		local function DrawTheirOffersTab(container)
 			local name = UnitName("party3");
-			theirOffersScrollContainer = AceGUI:Create("SimpleGroup");
+			local theirOffersScrollContainer = AceGUI:Create("SimpleGroup");
 			theirOffersScrollContainer:SetFullWidth(true);
 			theirOffersScrollContainer:SetFullHeight(true);
 			theirOffersScrollContainer:SetLayout("Fill");
 
 			container:AddChild(theirOffersScrollContainer);
 
-			theirOffersScroll = AceGUI:Create("ScrollFrame");
+			local theirOffersScroll = AceGUI:Create("ScrollFrame");
 			theirOffersScroll:SetLayout("Flow");
 			theirOffersScrollContainer:AddChild(theirOffersScroll);
 
@@ -1028,7 +1050,7 @@ function PetCompareEventFrame:CreatePetCompareWindow()
 					elseif(k == "type") then
 						--do nothing
 					else
-						speciesName, speciesIcon = C_PetJournal.GetPetInfoBySpeciesID(k)
+						local speciesName, speciesIcon = C_PetJournal.GetPetInfoBySpeciesID(k)
 						local icon = AceGUI:Create("Icon");
 						icon:SetImage(speciesIcon);
 						icon:SetLabel(speciesName);
@@ -1087,7 +1109,7 @@ function PetCompareEventFrame:CreatePetCompareWindow()
 			end)
 			button:SetWidth(325);
 
-			scoreAndButtonContainer = AceGUI:Create("SimpleGroup");
+			local scoreAndButtonContainer = AceGUI:Create("SimpleGroup");
 			scoreAndButtonContainer:SetLayout("Flow");
 			scoreAndButtonContainer:SetFullWidth(true);
 			scoreAndButtonContainer:AddChild(PetCompareScoreLabel);
@@ -1129,14 +1151,14 @@ function PetCompareEventFrame:CreatePetCompareWindow()
 	local function DrawGroup4(container)
 		local function DrawSharedTab(container)
 			local name = UnitName("party4");
-			sharedScrollcontainer = AceGUI:Create("SimpleGroup");
+			local sharedScrollcontainer = AceGUI:Create("SimpleGroup");
 			sharedScrollcontainer:SetFullWidth(true);
 			sharedScrollcontainer:SetFullHeight(true);
 			sharedScrollcontainer:SetLayout("Fill");
 
 			container:AddChild(sharedScrollcontainer);
 
-			sharedScroll = AceGUI:Create("ScrollFrame");
+			local sharedScroll = AceGUI:Create("ScrollFrame");
 			sharedScroll:SetLayout("Flow");
 			sharedScrollcontainer:AddChild(sharedScroll);
 
@@ -1157,7 +1179,7 @@ function PetCompareEventFrame:CreatePetCompareWindow()
 					elseif(k == "type") then
 						--do nothing
 					else
-						speciesName, speciesIcon = C_PetJournal.GetPetInfoBySpeciesID(k)
+						local speciesName, speciesIcon = C_PetJournal.GetPetInfoBySpeciesID(k)
 						local icon = AceGUI:Create("Icon");
 						icon:SetImage(speciesIcon);
 						icon:SetLabel(speciesName);
@@ -1185,14 +1207,14 @@ function PetCompareEventFrame:CreatePetCompareWindow()
 
 		local function DrawMyOffersTab(container)
 			local name = UnitName("party4");
-			myOffersScrollContainer = AceGUI:Create("SimpleGroup");
+			local myOffersScrollContainer = AceGUI:Create("SimpleGroup");
 			myOffersScrollContainer:SetFullWidth(true);
 			myOffersScrollContainer:SetFullHeight(true);
 			myOffersScrollContainer:SetLayout("Fill");
 
 			container:AddChild(myOffersScrollContainer);
 
-			myOffersScroll = AceGUI:Create("ScrollFrame");
+			local myOffersScroll = AceGUI:Create("ScrollFrame");
 			myOffersScroll:SetLayout("Flow");
 			myOffersScrollContainer:AddChild(myOffersScroll);
 
@@ -1213,7 +1235,7 @@ function PetCompareEventFrame:CreatePetCompareWindow()
 					elseif(k == "type") then
 						--do nothing
 					else
-						speciesName, speciesIcon = C_PetJournal.GetPetInfoBySpeciesID(k);
+						local speciesName, speciesIcon = C_PetJournal.GetPetInfoBySpeciesID(k);
 						local icon = AceGUI:Create("Icon");
 						icon:SetImage(speciesIcon);
 						icon:SetLabel(speciesName);
@@ -1241,14 +1263,14 @@ function PetCompareEventFrame:CreatePetCompareWindow()
 
 		local function DrawTheirOffersTab(container)
 			local name = UnitName("party4");
-			theirOffersScrollContainer = AceGUI:Create("SimpleGroup");
+			local theirOffersScrollContainer = AceGUI:Create("SimpleGroup");
 			theirOffersScrollContainer:SetFullWidth(true);
 			theirOffersScrollContainer:SetFullHeight(true);
 			theirOffersScrollContainer:SetLayout("Fill");
 
 			container:AddChild(theirOffersScrollContainer);
 
-			theirOffersScroll = AceGUI:Create("ScrollFrame");
+			local theirOffersScroll = AceGUI:Create("ScrollFrame");
 			theirOffersScroll:SetLayout("Flow");
 			theirOffersScrollContainer:AddChild(theirOffersScroll);
 
@@ -1269,7 +1291,7 @@ function PetCompareEventFrame:CreatePetCompareWindow()
 					elseif(k == "type") then
 						--do nothing
 					else
-						speciesName, speciesIcon = C_PetJournal.GetPetInfoBySpeciesID(k)
+						local speciesName, speciesIcon = C_PetJournal.GetPetInfoBySpeciesID(k)
 						local icon = AceGUI:Create("Icon");
 						icon:SetImage(speciesIcon);
 						icon:SetLabel(speciesName);
@@ -1329,7 +1351,7 @@ function PetCompareEventFrame:CreatePetCompareWindow()
 			end)
 			button:SetWidth(325);
 
-			scoreAndButtonContainer = AceGUI:Create("SimpleGroup");
+			local scoreAndButtonContainer = AceGUI:Create("SimpleGroup");
 			scoreAndButtonContainer:SetLayout("Flow");
 			scoreAndButtonContainer:SetFullWidth(true);
 			scoreAndButtonContainer:AddChild(PetCompareScoreLabel);
@@ -1401,7 +1423,7 @@ function PetCompareEventFrame:CreatePetCompareWindow()
 	tab:SetTitle("My pet score: " ..petCompareScore);
 	tab:SetLayout("Flow");
 
-	totalMembers = GetNumGroupMembers();
+	local totalMembers = GetNumGroupMembers();
 
 	-- Setup which tabs to show
 	if(totalMembers == 2) then
