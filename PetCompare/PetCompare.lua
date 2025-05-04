@@ -28,6 +28,31 @@ local function debugPrint(msg)
     end
 end
 
+local function tprint (tbl, indent)
+    if not indent then indent = 0 end
+    local toprnt = string.rep(" ", indent) .. "{\r\n"
+    indent = indent + 2
+    for k, v in pairs(tbl) do
+        toprnt = toprnt .. string.rep(" ", indent)
+      if (type(k) == "number") then
+        toprnt = toprnt .. "[" .. k .. "] = "
+      elseif (type(k) == "string") then
+        toprnt = toprnt  .. k ..  "= "
+      end
+      if (type(v) == "number") then
+        toprnt = toprnt .. v .. ",\r\n"
+      elseif (type(v) == "string") then
+        toprnt = toprnt .. "\"" .. v .. "\",\r\n"
+      elseif (type(v) == "table") then
+        toprnt = toprnt .. tprint(v, indent + 2) .. ",\r\n"
+      else
+        toprnt = toprnt .. "\"" .. tostring(v) .. "\",\r\n"
+      end
+    end
+    toprnt = toprnt .. string.rep(" ", indent-2) .. "}"
+    return toprnt
+end
+
 local function GetRealUnitName(unit)
     local name, realm = UnitNameUnmodified(unit)
     if name == UNKNOWNOBJECT then return name end
@@ -288,19 +313,66 @@ function PetCompareAddOn_Comms:OnCommReceived(passedPrefix, msg, distribution, s
 end
 
 function PetCompareEventFrame:CreatePetCompareWindow()
+    local function CreatePartyTab(tabGroup, partyIndex, partyName)
+        -- Create a container for this tab
+        local TabContainer = AceGUI:Create("SimpleGroup")
+        TabContainer:SetFullWidth(true)
+        TabContainer:SetFullHeight(true)
+        TabContainer:SetLayout("Flow")
+    
+        -- Create a label for this tab
+        local CompareLabel = AceGUI:Create("Label")
+        CompareLabel:SetText(partyName .. " does not have the addon so you could not compare.")
+        CompareLabel:SetFullWidth(true)
+        TabContainer:AddChild(CompareLabel)
+    
+        -- Create a button for this tab
+        local AnnounceButton = AceGUI:Create("Button")
+        AnnounceButton:SetText("Tell " .. partyName .. " that you tried to compare pets")
+        AnnounceButton:SetCallback("OnClick", function()
+            SendChatMessage("Hey " .. partyName .. " I tried to compare pets with you!", "party")
+        end)
+        AnnounceButton:SetWidth(325)
+        TabContainer:AddChild(AnnounceButton)
+    
+        -- Store the container reference for later updates
+        partyTabs["tab" .. partyIndex] = TabContainer
+    
+        -- Add the tab to the TabGroup
+        tabGroup:AddChild(TabContainer)
+    end
+
      -- Callback function for OnGroupSelected
-     local function SelectGroup(container, event, group)
+    local function SelectGroup(container, event, group)
         -- Hide all containers
         for _, tabContainer in pairs(partyTabs) do
             tabContainer.frame:Hide()
         end
 
         -- Show the selected container
+        debugPrint("Selected group: " .. group)
+
+        debugPrint("Group value: '" .. tostring(group) .. "', Type: " .. type(group))
+        if group == "tab1" then
+            debugPrint("Group matches 'tab1'")
+        elseif group == "tab2" then
+            debugPrint("Group matches 'tab2'")
+        else
+            debugPrint("Group does not match 'tab1' or 'tab2'")
+        end
+
         local selectedTab = partyTabs[group]
         if selectedTab then
-            debugPrint("Showing tab: " .. group)
+            debugPrint("showing tab: " .. group .. ", Type: " .. type(selectedTab))
+            if selectedTab then
+                for k, v in pairs(selectedTab) do
+                    debugPrint("  " .. tostring(k) .. ": " .. tostring(v))
+                end
+            else
+                debugPrint("Key: " .. group .. " is nil")
+            end
+
             selectedTab.frame:Show()
-            container:AddChild(selectedTab) -- Add the selected container to the TabGroup's container
         else
             debugPrint("No tab found for: " .. group)
         end
@@ -330,34 +402,97 @@ function PetCompareEventFrame:CreatePetCompareWindow()
 	local totalMembers = GetNumGroupMembers()
     local tabs = {}
 
-    -- Setup tabs for each party member
-    for i = 1, totalMembers - 1 do
-        local partyName = UnitName("party" .. i)
-        tabs[#tabs + 1] = { text = partyName, value = "tab" .. i }
-        print("Creating tab for:", partyName, "with key: tab", i)
+    -- Hardcoded logic for handling party members because loops just wont work????
+    if totalMembers == 2 then
+        local party1Name = UnitName("party1")
+        tabs = { { text = party1Name, value = "tab1" } }
+        CreatePartyTab(tab, 1, party1Name)
 
-        -- Create a container for this tab
-        local container = AceGUI:Create("SimpleGroup")
-        container:SetFullWidth(true)
-        container:SetFullHeight(true)
-        container:SetLayout("Flow")
-
-        -- Add default content to the container
-        local PetCompareLabel = AceGUI:Create("Label")
-        PetCompareLabel:SetText(partyName .. " does not have the addon so you could not compare.")
-        PetCompareLabel:SetFullWidth(true)
-        container:AddChild(PetCompareLabel)
-
-        local button = AceGUI:Create("Button")
-        button:SetText("Tell " .. partyName .. " that you tried to compare pets")
-        button:SetCallback("OnClick", function()
-            SendChatMessage("Hey " .. partyName .. " I tried to compare pets with you!", "party")
+    elseif totalMembers == 3 then
+        local party1Name = UnitName("party1")
+        local party2Name = UnitName("party2")
+        debugPrint("party1Name: " .. party1Name)
+        tabs = { { text = party1Name, value = "tab1" }, { text = party2Name, value = "tab2" } }
+    
+        -- Create Tab 1
+        local TabContainer1 = AceGUI:Create("SimpleGroup")
+        TabContainer1:SetFullWidth(true)
+        TabContainer1:SetFullHeight(true)
+        TabContainer1:SetLayout("Flow")
+    
+        local CompareLabel1 = AceGUI:Create("Label")
+        CompareLabel1:SetText(party1Name .. " does not have the addon so you could not compare.")
+        CompareLabel1:SetFullWidth(true)
+        TabContainer1:AddChild(CompareLabel1)
+    
+        local AnnounceButton1 = AceGUI:Create("Button")
+        AnnounceButton1:SetText("Tell " .. party1Name .. " that you tried to compare pets")
+        AnnounceButton1:SetCallback("OnClick", function()
+            SendChatMessage("Hey " .. party1Name .. " I tried to compare pets with you!", "party")
         end)
-        button:SetWidth(325)
-        container:AddChild(button)
+        AnnounceButton1:SetWidth(325)
+        TabContainer1:AddChild(AnnounceButton1)
+    
+        partyTabs["tab1"] = TabContainer1
+        tab:AddChild(TabContainer1)
+        for k, v in pairs(TabContainer1) do
+            debugPrint("  " .. tostring(k) .. ": " .. tostring(v))
+        end
+    
+        -- Create Tab 2
+        debugPrint("party2Name: " .. party2Name)
+        local TabContainer2 = AceGUI:Create("SimpleGroup")
+        TabContainer2:SetFullWidth(true)
+        TabContainer2:SetFullHeight(true)
+        TabContainer2:SetLayout("Flow")
+    
+        local CompareLabel2 = AceGUI:Create("Label")
+        CompareLabel2:SetText(party2Name .. " does not have the addon so you could not compare.")
+        CompareLabel2:SetFullWidth(true)
+        TabContainer2:AddChild(CompareLabel2)
+    
+        local AnnounceButton2 = AceGUI:Create("Button")
+        AnnounceButton2:SetText("Tell " .. party2Name .. " that you tried to compare pets")
+        AnnounceButton2:SetCallback("OnClick", function()
+            SendChatMessage("Hey " .. party2Name .. " I tried to compare pets with you!", "party")
+        end)
+        AnnounceButton2:SetWidth(325)
+        TabContainer2:AddChild(AnnounceButton2)
+    
+        partyTabs["tab2"] = TabContainer2
+        tab:AddChild(TabContainer2)
+        for k, v in pairs(TabContainer2) do
+            debugPrint("  " .. tostring(k) .. ": " .. tostring(v))
+        end
 
-        -- Store the container reference for later updates
-        partyTabs["tab" .. i] = container
+    elseif totalMembers == 4 then
+        local party1Name = UnitName("party1")
+        local party2Name = UnitName("party2")
+        local party3Name = UnitName("party3")
+        tabs = {
+            { text = party1Name, value = "tab1" },
+            { text = party2Name, value = "tab2" },
+            { text = party3Name, value = "tab3" },
+        }
+        CreatePartyTab(tab, 1, party1Name)
+        CreatePartyTab(tab, 2, party2Name)
+        CreatePartyTab(tab, 3, party3Name)
+
+    elseif totalMembers == 5 then
+        local party1Name = UnitName("party1")
+        local party2Name = UnitName("party2")
+        local party3Name = UnitName("party3")
+        local party4Name = UnitName("party4")
+        tabs = {
+            { text = party1Name, value = "tab1" },
+            { text = party2Name, value = "tab2" },
+            { text = party3Name, value = "tab3" },
+            { text = party4Name, value = "tab4" },
+        }
+        CreatePartyTab(tab, 1, party1Name)
+        CreatePartyTab(tab, 2, party2Name)
+        CreatePartyTab(tab, 3, party3Name)
+        CreatePartyTab(tab, 4, party4Name)
     end
 
     tab:SetTabs(tabs)
