@@ -1,7 +1,7 @@
 local PetCompareEventFrame = CreateFrame("frame", "PetCompare Frame");
 local myPrefix = "PetComparison121";
 local PetCompareAddOn_Comms = {};
-local petCompareAnswered = false; local petCompareScore = 0; local myDuplicates = {};
+local petCompareScore = 0; local myDuplicates = {};
 local firstPartyShared = nil; local firstPartyMyOffers = nil; local firstPartyTheirOffers = nil;
 local secondPartyShared = nil; local secondPartyMyOffers = nil; local secondPartyTheirOffers = nil;
 local thirdPartyShared = nil; local thirdPartyMyOffers = nil; local thirdPartyTheirOffers = nil;
@@ -9,18 +9,16 @@ local fourthPartyShared = nil; local fourthPartyMyOffers = nil; local fourthPart
 local sourcesPreviousValue = {};
 local typesPreviousValue = {};
 
-local partyTabs = {} -- Table to store references to tabs
+local currentTab = nil -- Variable to keep track of the current party index
+local SelectGroupFunction = nil -- Variable to store the function reference for selecting a group
 
 -- load variables
-local firstMatch = true;
-local hadAMatch = false;
-local initialized = false;
 local Serializer = LibStub("LibSerialize");
 local Deflater = LibStub("LibDeflate");
 local AceGUI = LibStub("AceGUI-3.0");
 local AceComm = LibStub:GetLibrary("AceComm-3.0");
 
-local DEBUG_MODE = true;
+local DEBUG_MODE = false;
 
 local function debugPrint(msg)
     if DEBUG_MODE then
@@ -86,12 +84,11 @@ function PetCompareAddOn_Comms:OnCommReceived(passedPrefix, msg, distribution, s
         if(distribution == "PARTY") then -- it is a distribution of the initiators pets
             local myName = UnitName("player");
             if(sender == myName) then
-                debugPrint("I am the sender. They are: " .. sender .. " I am: " .. myName)
                 return;
-            else 
+            else
                 debugPrint("I am not the sender. They are: " .. sender .. " I am: " .. myName)
                 debugPrint("I am answering a comparison request")
-               
+
                 --set search filters so addon doesnt break
                 C_PetJournal.SetFilterChecked(LE_PET_JOURNAL_FILTER_COLLECTED,true);
                 C_PetJournal.SetFilterChecked(LE_PET_JOURNAL_FILTER_NOT_COLLECTED,true);
@@ -112,7 +109,7 @@ function PetCompareAddOn_Comms:OnCommReceived(passedPrefix, msg, distribution, s
                     typesPreviousValue[typesCounter] = C_PetJournal.IsPetTypeChecked(typesCounter);
                 end
                 C_PetJournal.SetAllPetTypesChecked(true);
-            
+
                 petCompareScore = 0;
                 local  _, numOwned = C_PetJournal.GetNumPets();
                 local decoded = Deflater:DecodeForWoWAddonChannel(msg)
@@ -222,7 +219,6 @@ function PetCompareAddOn_Comms:OnCommReceived(passedPrefix, msg, distribution, s
                 PetCompareAddOn_Comms:SendAMessage(commonPets, "WHISPER", sender);
                 PetCompareAddOn_Comms:SendAMessage(myOffers, "WHISPER", sender);
                 PetCompareAddOn_Comms:SendAMessage(theirOffers, "WHISPER", sender);
-                SendChatMessage(myName .. " is done answering a request", "party");
 
                 numSources = C_PetJournal.GetNumPetSources();
                 for sourceCounter = 1, numSources, 1 do
@@ -236,7 +232,7 @@ function PetCompareAddOn_Comms:OnCommReceived(passedPrefix, msg, distribution, s
 
             end
         elseif (distribution == "WHISPER") then
-            debugPrint("I got a response to my comparison request")
+            debugPrint("I got a response to my comparison  from " .. sender)
             local decoded = Deflater:DecodeForWoWAddonChannel(msg)
             if not decoded then return end
             local decompressed = Deflater:DecompressDeflate(decoded)
@@ -244,11 +240,20 @@ function PetCompareAddOn_Comms:OnCommReceived(passedPrefix, msg, distribution, s
             local success, responseTable = Serializer:Deserialize(decompressed)
             if not success then return end
 
+            debugPrint("done decoding the message")
+
             local totalMembers = GetNumGroupMembers();
             for counter = 1, totalMembers-1, 1 do
                 local index = "party" .. counter;
                 local theirName = GetRealUnitName(index);
-                if(theirName == sender) then --if the sender matches this party members name, 
+                local normalizedSender = sender
+                if not normalizedSender:find("-") then
+                    local myRealm = GetNormalizedRealmName() -- Get your server's name
+                    normalizedSender = normalizedSender .. "-" .. myRealm
+                end
+
+                if(theirName == normalizedSender) then --if the sender matches this party members name, 
+                    debugPrint("I found a match for " .. theirName .. " at index " .. index)
                     if(counter == 1) then
                         if(responseTable["type"] == "common") then
                             firstPartyShared = responseTable;
@@ -296,7 +301,7 @@ function PetCompareAddOn_Comms:OnCommReceived(passedPrefix, msg, distribution, s
                             fourthPartyShared = responseTable;
                         elseif(responseTable["type"] == "startersOffers") then
                             fourthPartyMyOffers = {};
-                            for k,v in pairs(responseTable) do
+                            for k,_ in pairs(responseTable) do
                                 if(myDuplicates[k] == true) then --if I have a duplicate of this pet, then I can offer it
                                     fourthPartyMyOffers[k] = true;
                                 end
@@ -304,6 +309,15 @@ function PetCompareAddOn_Comms:OnCommReceived(passedPrefix, msg, distribution, s
                         elseif(responseTable["type"] == "partyMembersOffers") then
                             fourthPartyTheirOffers = responseTable;
                         end
+                    end
+
+                    --if the message received is from the current party member, rcall SelectGroup
+                    if tonumber(currentTab:match("%d+")) == counter then
+                        debugPrint("I received a message from the party member whos tab is selected, so I will call SelectGroup")
+                        SelectGroupFunction(nil, nil, currentTab)
+                    else
+                        debugPrint("I received a message from the party member whos tab is not selected, so I will not call SelectGroup")
+                        debugPrint("currentTab is: " .. currentTab .. " and the party member is: " .. counter)
                     end
                     break;
                 end
@@ -322,7 +336,6 @@ function PetCompareEventFrame:CreatePetCompareWindow()
 		secondPartyShared = nil; secondPartyMyOffers = nil; secondPartyTheirOffers = nil;
 		thirdPartyShared = nil; thirdPartyMyOffers = nil; thirdPartyTheirOffers = nil;
 		fourthPartyShared = nil; fourthPartyMyOffers = nil; fourthPartyTheirOffers = nil;
-        partyTabs = {}
 		AceGUI:Release(widget)
 	end)
 	-- Fill Layout - the TabGroup widget will fill the whole frame
@@ -335,40 +348,322 @@ function PetCompareEventFrame:CreatePetCompareWindow()
 	tab:SetLayout("Flow");
 
     local function CreatePartyTab(tabGroup, partyIndex, partyName)
+        --Helper function to create the compare UI
+        local function CreateCompareUI(container, name)
+            local function DrawSharedTab(container, name, shared)
+                local sharedScrollcontainer = AceGUI:Create("SimpleGroup");
+                sharedScrollcontainer:SetFullWidth(true);
+                sharedScrollcontainer:SetFullHeight(true);
+                sharedScrollcontainer:SetLayout("Fill");
+
+                container:AddChild(sharedScrollcontainer);
+
+                local sharedScroll = AceGUI:Create("ScrollFrame");
+                sharedScroll:SetLayout("Flow");
+                sharedScrollcontainer:AddChild(sharedScroll);
+
+                local count = 0;
+                for k,_ in pairs(shared) do
+                    if(k == "score") then
+                        --do nothing
+                    elseif(k == "type") then
+                        --do nothing
+                    else
+                        count = count +1;
+                    end
+                end
+                if(count > 0) then
+                    for k,_ in pairs(shared) do
+                        if(k == "score") then
+                            --do nothing
+                        elseif(k == "type") then
+                            --do nothing
+                        else
+                            local speciesName, speciesIcon = C_PetJournal.GetPetInfoBySpeciesID(k)
+                            local icon = AceGUI:Create("Icon");
+                            icon:SetImage(speciesIcon);
+                            icon:SetLabel(speciesName);
+                            icon:SetImageSize(50,50);
+                            icon.speciesName = speciesName;
+
+                            icon:SetCallback("OnClick",function()
+                                SetCollectionsJournalShown(true, 2);
+                                C_Timer.After(0.1, function()
+                                    C_PetJournal.SetSearchFilter(icon.speciesName);
+                                end)
+                            end)
+                            sharedScroll:AddChild(icon);
+                        end
+                    end
+                else
+                    local PetCompareLabel = AceGUI:Create("Label");
+                    PetCompareLabel:SetText("You and " .. name .. " have no pets in common.")
+                    PetCompareLabel:SetFullWidth(true)
+                    sharedScroll:AddChild(PetCompareLabel);
+                end
+            end
+
+            local function DrawMyOffersTab(container, name, myOffers)
+                local myOffersScrollContainer = AceGUI:Create("SimpleGroup");
+                myOffersScrollContainer:SetFullWidth(true);
+                myOffersScrollContainer:SetFullHeight(true);
+                myOffersScrollContainer:SetLayout("Fill");
+
+                container:AddChild(myOffersScrollContainer);
+
+                local myOffersScroll = AceGUI:Create("ScrollFrame");
+                myOffersScroll:SetLayout("Flow");
+                myOffersScrollContainer:AddChild(myOffersScroll);
+
+                local count = 0;
+                for k,v in pairs(myOffers) do
+                    if(k == "score") then
+                        --do nothing
+                    elseif(k == "type") then
+                        --do nothing
+                    else
+                        count = count +1;
+                    end
+                end
+                if(count > 0) then
+                    for k,v in pairs(myOffers) do
+                        if(k == "score") then
+                            --do nothing
+                        elseif(k == "type") then
+                            --do nothing
+                        else
+                            local speciesName, speciesIcon = C_PetJournal.GetPetInfoBySpeciesID(k);
+                            local icon = AceGUI:Create("Icon");
+                            icon:SetImage(speciesIcon);
+                            icon:SetLabel(speciesName);
+                            icon:SetImageSize(50,50);
+                            icon.speciesName = speciesName;
+
+                            icon:SetCallback("OnClick",function()
+                                SetCollectionsJournalShown(true, 2);
+                                C_Timer.After(0.1, function()
+                                    C_PetJournal.SetSearchFilter(icon.speciesName);
+                                end)
+                            end)
+                            myOffersScroll:AddChild(icon);
+                        end	
+                    end
+
+
+                else
+                    local PetCompareLabel = AceGUI:Create("Label");
+                    PetCompareLabel:SetText("You cannot offer " .. name .. " any pets");
+                    PetCompareLabel:SetFullWidth(true)
+                    myOffersScroll:AddChild(PetCompareLabel);
+                end
+            end
+
+            local function DrawTheirOffersTab(container, name, theirOffers)
+                local theirOffersScrollContainer = AceGUI:Create("SimpleGroup");
+                theirOffersScrollContainer:SetFullWidth(true);
+                theirOffersScrollContainer:SetFullHeight(true);
+                theirOffersScrollContainer:SetLayout("Fill");
+
+                container:AddChild(theirOffersScrollContainer);
+
+                local theirOffersScroll = AceGUI:Create("ScrollFrame");
+                theirOffersScroll:SetLayout("Flow");
+                theirOffersScrollContainer:AddChild(theirOffersScroll);
+
+                local count = 0;
+                for k,_ in pairs(theirOffers) do
+                    if(k == "score") then
+                        --do nothing
+                    elseif(k == "type") then
+                        --do nothing
+                    else
+                        count = count +1;
+                    end
+                end
+                if(count > 0) then
+                    for k,v in pairs(theirOffers) do
+                        if(k == "score") then
+                            --do nothing
+                        elseif(k == "type") then
+                            --do nothing
+                        else
+                            local speciesName, speciesIcon = C_PetJournal.GetPetInfoBySpeciesID(k)
+                            local icon = AceGUI:Create("Icon");
+                            icon:SetImage(speciesIcon);
+                            icon:SetLabel(speciesName);
+                            icon:SetImageSize(50,50);
+                            icon.speciesName = speciesName;
+
+                            icon:SetCallback("OnClick",function()
+                                SetCollectionsJournalShown(true, 2);
+                                C_Timer.After(0.1, function()
+                                    C_PetJournal.SetSearchFilter(icon.speciesName);
+                                end)
+                            end)
+                            theirOffersScroll:AddChild(icon);
+                        end
+                    end
+                else
+                    local PetCompareLabel = AceGUI:Create("Label");
+                    PetCompareLabel:SetText(name .. " has no pets to offer you.")
+                    PetCompareLabel:SetFullWidth(true)
+                    theirOffersScroll:AddChild(PetCompareLabel);
+                end
+            end
+
+            -- Callback function for OnGroupSelected in compare ui
+            local function SelectPetGroup(container, event, group)
+                container:ReleaseChildren();
+                local shared, myOffers, theirOffers = nil, nil, nil;
+                if(partyIndex == 1) then
+                    shared = firstPartyShared;
+                    myOffers = firstPartyMyOffers;
+                    theirOffers = firstPartyTheirOffers;
+                elseif(partyIndex == 2) then
+                    shared = secondPartyShared;
+                    myOffers = secondPartyMyOffers;
+                    theirOffers = secondPartyTheirOffers;
+                elseif(partyIndex == 3) then
+                    shared = thirdPartyShared;
+                    myOffers = thirdPartyMyOffers;
+                    theirOffers = thirdPartyTheirOffers;
+                elseif(partyIndex == 4) then
+                    shared = fourthPartyShared;
+                    myOffers = fourthPartyMyOffers;
+                    theirOffers = fourthPartyTheirOffers;
+                end
+                if group == "sharedPets" then
+                    DrawSharedTab(container, partyName, shared);
+                elseif group == "myOffers" then
+                    DrawMyOffersTab(container, partyName, myOffers);
+                elseif group == "theirOffers" then
+                    DrawTheirOffersTab(container, partyName, theirOffers);
+                end
+            end
+
+            local theirScore = nil;
+            if(partyIndex == 1) then
+                theirScore = firstPartyShared["score"];
+            elseif(partyIndex == 2) then
+                theirScore = secondPartyShared["score"];
+            elseif(partyIndex == 3) then
+                theirScore = thirdPartyShared["score"];
+            elseif(partyIndex == 4) then
+                theirScore = fourthPartyShared["score"];
+            end
+
+            local PetCompareScoreLabel = AceGUI:Create("Label");
+			PetCompareScoreLabel:SetText(name .."'s pet score: " .. theirScore ); -- this only works with the first party member 
+			if(petCompareScore > theirScore) then -- if my score is higher
+				PetCompareScoreLabel:SetColor(0,255,0); --make it green
+			elseif(petCompareScore == theirScore) then --if we have the same score
+				PetCompareScoreLabel:SetColor(0,255,42); -- make it yellow
+			else --if their score is higher
+				PetCompareScoreLabel:SetColor(255,0,0); --make it red
+			end
+
+			local button = AceGUI:Create("Button");
+			button:SetText("Tell " .. name .. " that you compared pets");
+			button:SetCallback("OnClick",
+			function() 
+				SendChatMessage("Hey " .. name .. " I compared pets with you!", "party");
+			end)
+			button:SetWidth(325);
+
+			local scoreAndButtonContainer = AceGUI:Create("SimpleGroup");
+			scoreAndButtonContainer:SetLayout("Flow");
+			scoreAndButtonContainer:SetFullWidth(true);
+			scoreAndButtonContainer:AddChild(PetCompareScoreLabel);
+			scoreAndButtonContainer:AddChild(button);
+			container:AddChild(scoreAndButtonContainer);
+
+			-- Create the TabGroup for shared/my offers/their offers
+			local compareTab =  AceGUI:Create("TabGroup");
+			compareTab:SetLayout("Flow");
+			compareTab:SetFullWidth(true);
+			compareTab:SetFullHeight(true);
+			--setup tabs
+			compareTab:SetTabs( { {text="Shared Pets", value="sharedPets"}, {text="My Offers", value="myOffers"}, {text="Their Offers", value="theirOffers"} } )
+			-- Register callback
+			compareTab:SetCallback("OnGroupSelected", SelectPetGroup)
+			-- Set initial Tab (this will fire the OnGroupSelected callback)
+			compareTab:SelectTab("sharedPets")
+
+			-- add to the frame container
+			container:AddChild(compareTab);
+        end
+
+        -- Helper function to create the label and button
+        local function CreateNilStateUI(TabContainer, partyName)
+            -- Create a label for this tab
+            local CompareLabel = AceGUI:Create("Label")
+            CompareLabel:SetText(partyName .. " does not have the addon so you could not compare.")
+            CompareLabel:SetFullWidth(true)
+            TabContainer:AddChild(CompareLabel)
+
+            -- Create a button for this tab
+            local AnnounceButton = AceGUI:Create("Button")
+            AnnounceButton:SetText("Tell " .. partyName .. " that you tried to compare pets")
+            AnnounceButton:SetCallback("OnClick", function()
+                SendChatMessage("Hey " .. partyName .. " I tried to compare pets with you!", "party")
+            end)
+            AnnounceButton:SetWidth(325)
+            TabContainer:AddChild(AnnounceButton)
+        end
+
         -- Create a container for this tab
         local TabContainer = AceGUI:Create("SimpleGroup")
         TabContainer:SetFullWidth(true)
         TabContainer:SetFullHeight(true)
         TabContainer:SetLayout("Flow")
 
-        -- Create a label for this tab
-        local CompareLabel = AceGUI:Create("Label")
-        CompareLabel:SetText(partyName .. " does not have the addon so you could not compare.")
-        CompareLabel:SetFullWidth(true)
-        TabContainer:AddChild(CompareLabel)
-
-        -- Create a button for this tab
-        local AnnounceButton = AceGUI:Create("Button")
-        AnnounceButton:SetText("Tell " .. partyName .. " that you tried to compare pets")
-        AnnounceButton:SetCallback("OnClick", function()
-            SendChatMessage("Hey " .. partyName .. " I tried to compare pets with you!", "party")
-        end)
-        AnnounceButton:SetWidth(325)
-        TabContainer:AddChild(AnnounceButton)
+        if(partyIndex == 1) then
+            -- check if firstPartyShared, firstPartyMyOffers, firstPartyTheirOffers is nil
+            if(firstPartyShared == nil) then
+                CreateNilStateUI(TabContainer, partyName)
+            else
+                CreateCompareUI(TabContainer, partyName)
+            end
+        elseif(partyIndex == 2) then
+            -- check secondPartyShared, secondPartyMyOffers, secondPartyTheirOffers
+            if(secondPartyShared == nil) then
+                CreateNilStateUI(TabContainer, partyName)
+            else
+                CreateCompareUI(TabContainer, partyName)
+            end
+        elseif(partyIndex == 3) then
+            -- check thirdPartyShared, thirdPartyMyOffers, thirdPartyTheirOffers
+            if(thirdPartyShared == nil) then
+                CreateNilStateUI(TabContainer, partyName)
+            else
+                CreateCompareUI(TabContainer, partyName)
+            end
+        elseif(partyIndex == 4) then
+            -- check fourthPartyShared, fourthPartyMyOffers, fourthPartyTheirOffers
+            if(fourthPartyShared == nil) then
+                CreateNilStateUI(TabContainer, partyName)
+            else
+                CreateCompareUI(TabContainer, partyName)
+            end
+        else
+            -- something is wrong
+            debugPrint("Something is wrong with the party index: " .. partyIndex)
+        end
 
         -- Add the tab to the TabGroup
         tabGroup:AddChild(TabContainer)
         return TabContainer
     end
 
-    local lastTab = nil
 
     local function SelectGroup(container, event, group)
         tab:ReleaseChildren()
+        currentTab = group
         local index = tonumber((group:match("%d+")))
         CreatePartyTab(tab, index, UnitName("party" .. index))
-
     end
+
+    SelectGroupFunction = SelectGroup
 
     local totalMembers = GetNumGroupMembers()
     local tabs = {}
@@ -400,7 +695,6 @@ function PetCompareEventFrame:OnEvent(event, text, ... )
     if(event == "CHAT_MSG_PARTY" or event == "CHAT_MSG_PARTY_LEADER") then
 		text = string.lower(text);
 		if(text == "!compare") then
-			debugPrint("text was !compare")
 			local totalMembers = GetNumGroupMembers();
 			if(totalMembers == 1) then
 				return;
@@ -434,7 +728,6 @@ function PetCompareEventFrame:OnEvent(event, text, ... )
 
 			-- only the starting player should be sending the first message
 			if(startedPlayerName == myName) then
-				debugPrint("I am sending the first message.")
 				local myPets = {};
 				local myRarities = {};
 				local myLevels = {};
@@ -509,7 +802,7 @@ function PetCompareEventFrame:OnEvent(event, text, ... )
 								end
 							end
 						end
-						
+
 					end
 				end
 
@@ -536,4 +829,3 @@ end--function
 
 PetCompareEventFrame:RegisterEvent("PLAYER_ENTERING_WORLD");
 PetCompareEventFrame:SetScript("OnEvent", PetCompareEventFrame.OnEvent);
-debugPrint("registered PEW")
