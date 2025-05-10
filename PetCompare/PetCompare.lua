@@ -18,7 +18,7 @@ local Deflater = LibStub("LibDeflate");
 local AceGUI = LibStub("AceGUI-3.0");
 local AceComm = LibStub:GetLibrary("AceComm-3.0");
 
-local DEBUG_MODE = false;
+local DEBUG_MODE = true;
 
 local function debugPrint(msg)
     if DEBUG_MODE then
@@ -71,7 +71,7 @@ function PetCompareAddOn_Comms:SendAMessage(myPets, channel, target)
 	local serialized = Serializer:Serialize(myPets); 
 	local compressed = Deflater:CompressDeflate(serialized);
 	local encoded = Deflater:EncodeForWoWAddonChannel(compressed)
-	debugPrint("sending a message via " .. channel)
+	-- debugPrint("sending a message via " .. channel)
     if(channel == "PARTY") then
         self:SendCommMessage(myPrefix, encoded, channel);
     elseif(channel == "WHISPER") then
@@ -86,8 +86,8 @@ function PetCompareAddOn_Comms:OnCommReceived(passedPrefix, msg, distribution, s
             if(sender == myName) then
                 return;
             else
-                debugPrint("I am not the sender. They are: " .. sender .. " I am: " .. myName)
-                debugPrint("I am answering a comparison request")
+                -- debugPrint("I am not the sender. They are: " .. sender .. " I am: " .. myName)
+                -- debugPrint("I am answering a comparison request")
 
                 --set search filters so addon doesnt break
                 C_PetJournal.SetFilterChecked(LE_PET_JOURNAL_FILTER_COLLECTED,true);
@@ -210,7 +210,7 @@ function PetCompareAddOn_Comms:OnCommReceived(passedPrefix, msg, distribution, s
                     end --if speciesName
                 end --for loop for my own pets
                 --need to find out how many of their pets I dont have. do for each in theirPets, exclude the type, and score indices
-                for k,v in pairs(theirPets) do
+                for k,_ in pairs(theirPets) do
                     if(commonPets[k] ~= true) then --go through all of theirPets, and any pet which is not shared, must be a possible offer.
                         theirOffers[k] = true;
                     end
@@ -239,9 +239,7 @@ function PetCompareAddOn_Comms:OnCommReceived(passedPrefix, msg, distribution, s
             if not decompressed then return end
             local success, responseTable = Serializer:Deserialize(decompressed)
             if not success then return end
-
-            debugPrint("done decoding the message")
-
+            
             local totalMembers = GetNumGroupMembers();
             for counter = 1, totalMembers-1, 1 do
                 local index = "party" .. counter;
@@ -253,71 +251,87 @@ function PetCompareAddOn_Comms:OnCommReceived(passedPrefix, msg, distribution, s
                 end
 
                 if(theirName == normalizedSender) then --if the sender matches this party members name, 
-                    debugPrint("I found a match for " .. theirName .. " at index " .. index)
+                    -- debugPrint("I found a match for " .. theirName .. " at index " .. index)
                     if(counter == 1) then
                         if(responseTable["type"] == "common") then
+                            debugPrint("I received their shared pets")
                             firstPartyShared = responseTable;
                         elseif(responseTable["type"] == "startersOffers") then
+                            debugPrint("it is my offers")
                             firstPartyMyOffers = {};
-                            for k,v in pairs(responseTable) do
+                            for k,_ in pairs(responseTable) do
                                 if(myDuplicates[k] == true) then --if I have a duplicate of this pet, then I can offer it
                                     firstPartyMyOffers[k] = true;
                                 end
                             end
+                            debugPrint("done computing my offers")
                         elseif(responseTable["type"] == "partyMembersOffers") then
+                            debugPrint("it is their offers")
                             firstPartyTheirOffers = responseTable;
                         end
 
                     elseif(counter == 2) then
                         if(responseTable["type"] == "common") then
+                            debugPrint("I received their shared pets")
                             secondPartyShared = responseTable;
                         elseif(responseTable["type"] == "startersOffers") then
+                            debugPrint("it is my offers")
                             secondPartyMyOffers = {};
-                            for k,v in pairs(responseTable) do
+                            for k,_ in pairs(responseTable) do
                                 if(myDuplicates[k] == true) then --if I have a duplicate of this pet, then I can offer it
                                     secondPartyMyOffers[k] = true;
                                 end
                             end
+                            debugPrint("done computing my offers")
                         elseif(responseTable["type"] == "partyMembersOffers") then
+                            debugPrint("it is their offers")
                             secondPartyTheirOffers = responseTable;
                         end
 
                     elseif(counter == 3) then
                         if(responseTable["type"] == "common") then
+                            debugPrint("I received their shared pets")
                             thirdPartyShared = responseTable;
                         elseif(responseTable["type"] == "startersOffers") then
+                            debugPrint("it is my offers")
                             thirdPartyMyOffers = {};
-                            for k,v in pairs(responseTable) do
+                            for k,_ in pairs(responseTable) do
                                 if(myDuplicates[k] == true) then --if I have a duplicate of this pet, then I can offer it
                                     thirdPartyMyOffers[k] = true;
                                 end
                             end
+                            debugPrint("done computing my offers")
                         elseif(responseTable["type"] == "partyMembersOffers") then
+                            debugPrint("it is their offers")
                             thirdPartyTheirOffers = responseTable;
                         end
 
                     else
                         if(responseTable["type"] == "common") then
+                            debugPrint("I received their shared pets")
                             fourthPartyShared = responseTable;
                         elseif(responseTable["type"] == "startersOffers") then
+                            debugPrint("it is my offers")
                             fourthPartyMyOffers = {};
                             for k,_ in pairs(responseTable) do
                                 if(myDuplicates[k] == true) then --if I have a duplicate of this pet, then I can offer it
                                     fourthPartyMyOffers[k] = true;
                                 end
                             end
+                            debugPrint("done computing my offers")
                         elseif(responseTable["type"] == "partyMembersOffers") then
+                            debugPrint("it is their offers")
                             fourthPartyTheirOffers = responseTable;
                         end
                     end
 
                     --if the message received is from the current party member, rcall SelectGroup
                     if tonumber(currentTab:match("%d+")) == counter then
-                        debugPrint("I received a message from the party member whos tab is selected, so I will call SelectGroup")
+                        -- debugPrint("I received a message from the party member whos tab is selected, so I will call SelectGroup")
                         SelectGroupFunction(nil, nil, currentTab)
                     else
-                        debugPrint("I received a message from the party member whos tab is not selected, so I will not call SelectGroup")
-                        debugPrint("currentTab is: " .. currentTab .. " and the party member is: " .. counter)
+                        -- debugPrint("I received a message from the party member whos tab is not selected, so I will not call SelectGroup")
+                        -- debugPrint("currentTab is: " .. currentTab .. " and the party member is: " .. counter)
                     end
                     break;
                 end
@@ -416,7 +430,7 @@ function PetCompareEventFrame:CreatePetCompareWindow()
                 myOffersScrollContainer:AddChild(myOffersScroll);
 
                 local count = 0;
-                for k,v in pairs(myOffers) do
+                for k,_ in pairs(myOffers) do
                     if(k == "score") then
                         --do nothing
                     elseif(k == "type") then
@@ -426,7 +440,7 @@ function PetCompareEventFrame:CreatePetCompareWindow()
                     end
                 end
                 if(count > 0) then
-                    for k,v in pairs(myOffers) do
+                    for k,_ in pairs(myOffers) do
                         if(k == "score") then
                             --do nothing
                         elseif(k == "type") then
@@ -481,7 +495,7 @@ function PetCompareEventFrame:CreatePetCompareWindow()
                     end
                 end
                 if(count > 0) then
-                    for k,v in pairs(theirOffers) do
+                    for k,_ in pairs(theirOffers) do
                         if(k == "score") then
                             --do nothing
                         elseif(k == "type") then
@@ -512,7 +526,14 @@ function PetCompareEventFrame:CreatePetCompareWindow()
             end
 
             -- Callback function for OnGroupSelected in compare ui
-            local function SelectPetGroup(container, event, group)
+            local function SelectPetGroup(container, _, group)
+                local function DisplayLoading(container, name)
+                    local PetCompareLabel = AceGUI:Create("Label");
+                    PetCompareLabel:SetText(name .. "'s pets are loading...");
+                    PetCompareLabel:SetFullWidth(true)
+                    container:AddChild(PetCompareLabel);
+                end
+
                 container:ReleaseChildren();
                 local shared, myOffers, theirOffers = nil, nil, nil;
                 if(partyIndex == 1) then
@@ -533,11 +554,23 @@ function PetCompareEventFrame:CreatePetCompareWindow()
                     theirOffers = fourthPartyTheirOffers;
                 end
                 if group == "sharedPets" then
-                    DrawSharedTab(container, partyName, shared);
+                    if(shared == nil) then
+                        DisplayLoading(container, name);
+                    else
+                        DrawSharedTab(container, partyName, shared);
+                    end
                 elseif group == "myOffers" then
-                    DrawMyOffersTab(container, partyName, myOffers);
+                    if(myOffers == nil) then
+                        DisplayLoading(container, name);
+                    else
+                        DrawMyOffersTab(container, partyName, myOffers);
+                    end
                 elseif group == "theirOffers" then
-                    DrawTheirOffersTab(container, partyName, theirOffers);
+                    if(theirOffers == nil) then
+                        DisplayLoading(container, name);
+                    else
+                        DrawTheirOffersTab(container, partyName, theirOffers);
+                    end
                 end
             end
 
@@ -656,7 +689,7 @@ function PetCompareEventFrame:CreatePetCompareWindow()
     end
 
 
-    local function SelectGroup(container, event, group)
+    local function SelectGroup(_, _, group)
         tab:ReleaseChildren()
         currentTab = group
         local index = tonumber((group:match("%d+")))
@@ -688,7 +721,7 @@ function PetCompareEventFrame:onLoad()
 	PetCompareEventFrame:SetScript("OnEvent", PetCompareEventFrame.OnEvent);
 	PetCompareEventFrame:RegisterEvent("CHAT_MSG_PARTY_LEADER")
 	PetCompareEventFrame:SetScript("OnEvent", PetCompareEventFrame.OnEvent);
-	debugPrint("registered for messages")
+	-- debugPrint("registered for messages")
 end
 
 function PetCompareEventFrame:OnEvent(event, text, ... )
@@ -732,7 +765,7 @@ function PetCompareEventFrame:OnEvent(event, text, ... )
 				local myRarities = {};
 				local myLevels = {};
 				local pointsAddedForPet = {};
-				local  numPets, numOwned = C_PetJournal.GetNumPets();
+				local  _, numOwned = C_PetJournal.GetNumPets();
 				for firstPlayerCounter = 1, numOwned, 1 do
 					local petID, speciesID, _, _, level, _, _, _, _, _, _, _, _, _, _, isTradeable = C_PetJournal.GetPetInfoByIndex(firstPlayerCounter);
 
@@ -822,7 +855,7 @@ function PetCompareEventFrame:OnEvent(event, text, ... )
 			end
 		end
     elseif(event == "PLAYER_ENTERING_WORLD") then
-        debugPrint("PEW event fired")
+        -- debugPrint("PEW event fired")
         PetCompareEventFrame:onLoad();
     end
 end--function
