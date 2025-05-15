@@ -18,7 +18,7 @@ local Deflater = LibStub("LibDeflate");
 local AceGUI = LibStub("AceGUI-3.0");
 local AceComm = LibStub:GetLibrary("AceComm-3.0");
 
-local DEBUG_MODE = true;
+local DEBUG_MODE = false;
 
 local function debugPrint(msg)
     if DEBUG_MODE then
@@ -49,6 +49,67 @@ local function tprint (tbl, indent)
     end
     toprnt = toprnt .. string.rep(" ", indent-2) .. "}"
     return toprnt
+end
+
+local function tText(tbl, indent)
+    if not indent then indent = 0 end
+    local result = string.rep(" ", indent) .. "{\r\n"
+    indent = indent + 2
+    for k, v in pairs(tbl) do
+        result = result .. string.rep(" ", indent)
+        if type(k) == "number" then
+            result = result .. "[" .. k .. "] = "
+        elseif type(k) == "string" then
+            result = result .. k .. " = "
+        end
+        if type(v) == "number" then
+            result = result .. v .. ",\r\n"
+        elseif type(v) == "string" then
+            result = result .. "\"" .. v .. "\",\r\n"
+        elseif type(v) == "table" then
+            result = result .. tText(v, indent + 2) .. ",\r\n"
+        else
+            result = result .. "\"" .. tostring(v) .. "\",\r\n"
+        end
+    end
+    result = result .. "\n" .. string.rep(" ", indent - 2) .. "}"
+    return result
+end
+
+local function ShowErrorFrame(responseTable)
+    -- Create the main frame
+    local frame = AceGUI:Create("Frame")
+    frame:SetTitle("PetCompare Error")
+    frame:SetStatusText("Please share this information in the Discord.")
+    frame:SetLayout("Flow")
+    frame:SetWidth(500)
+    frame:SetHeight(400)
+
+    -- Add a label with instructions
+    local label = AceGUI:Create("Label")
+    label:SetText("PetCompare encountered an error with responses. Please share this in the Discord so that I can work to resolve it. I am aware it can sometimes happen but I have not been able to reproduce it myself.")
+    label:SetFullWidth(true)
+    frame:AddChild(label)
+
+    -- Add a textbox for the Discord link
+    local discordLink = AceGUI:Create("EditBox")
+    discordLink:SetLabel("Discord Link")
+    discordLink:SetText("https://discord.gg/Qgkpm8CEuZ")
+    discordLink:SetFullWidth(true)
+    discordLink:SetCallback("OnEnterPressed", function(widget) widget:ClearFocus() end)
+    frame:AddChild(discordLink)
+
+    -- Add a textbox for the table data
+    local tableData = AceGUI:Create("MultiLineEditBox")
+    tableData:SetLabel("Response Table")
+    tableData:SetText(tText(responseTable))
+    tableData:SetFullWidth(true)
+    tableData:SetNumLines(15)
+    tableData:SetCallback("OnEnterPressed", function(widget) widget:ClearFocus() end)
+    frame:AddChild(tableData)
+
+    -- Add a close button
+    frame:SetCallback("OnClose", function(widget) AceGUI:Release(widget) end)
 end
 
 local function GetRealUnitName(unit)
@@ -216,8 +277,11 @@ function PetCompareAddOn_Comms:OnCommReceived(passedPrefix, msg, distribution, s
                     end
                 end
                 commonPets["score"] = Round(petCompareScore);
+                debugPrint("Sending common")
                 PetCompareAddOn_Comms:SendAMessage(commonPets, "WHISPER", sender);
+                debugPrint("Sending my offers")
                 PetCompareAddOn_Comms:SendAMessage(myOffers, "WHISPER", sender);
+                debugPrint("Sending their offers")
                 PetCompareAddOn_Comms:SendAMessage(theirOffers, "WHISPER", sender);
 
                 numSources = C_PetJournal.GetNumPetSources();
@@ -268,6 +332,9 @@ function PetCompareAddOn_Comms:OnCommReceived(passedPrefix, msg, distribution, s
                         elseif(responseTable["type"] == "partyMembersOffers") then
                             debugPrint("it is their offers")
                             firstPartyTheirOffers = responseTable;
+                        else
+                            debugPrint("I received a message from " .. theirName .. " but it was not a valid type")
+                            ShowErrorFrame(responseTable)
                         end
 
                     elseif(counter == 2) then
