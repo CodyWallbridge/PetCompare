@@ -1,7 +1,7 @@
 ## Interface: 110105
 ## Title: PetCompare
 ## Author: Van
-## Version: 5
+## Version: 5.1
 ## IconTexture: Interface\AddOns\PetCompare\Media\Icons\petCompareicon.jpeg
 
 libs\LibStub\LibStub.lua
