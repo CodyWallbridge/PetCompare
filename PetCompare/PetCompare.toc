@@ -1,4 +1,4 @@
-## Interface: 110107
+## Interface: 120000
 ## Title: PetCompare
 ## Author: Van
 ## Version: 5.1.2
@@ -21,3 +21,4 @@ PetCompare.lua
 # when updating, download newest versions from https://www.curseforge.com/wow/addons/libdeflate/download/2564445
 # when updating, download newest versions from https://www.wowace.com/projects/libserialize
 # when updating, download newest versions from https://www.wowace.com/projects/ace3/pages/api/ace-gui-3-0
+
