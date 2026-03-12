@@ -1,7 +1,7 @@
-## Interface: 120000
+## Interface: 120001
 ## Title: PetCompare
 ## Author: Van
-## Version: 5.1.2
+## Version: 5.1.4
 ## IconTexture: Interface\AddOns\PetCompare\Media\Icons\petCompareicon.jpeg
 ## X-Curse-Project-ID: 479539
 ## X-WoWI-ID: 26308
